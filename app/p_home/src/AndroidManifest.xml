@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.ycdyng.module.micro">
+
+    <application>
+
+        <activity android:name=".HomeActivity" />
+
+    </application>
+
+</manifest>

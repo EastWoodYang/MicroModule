@@ -1,0 +1,175 @@
+def aidlSrcDirs = []
+def assetsSrcDirs = []
+def javaSrcDirs = []
+def jniSrcDirs = []
+def jniLibsSrcDirs = []
+def manifestSrcFiles = []
+def resSrcDirs = []
+
+def mainMicroAndroidManifestFile;
+
+def filterManifest = { manifest ->
+
+    def from = manifest.indexOf("<application>") + "<application>".length()
+    def end = manifest.indexOf("</application>")
+    def body = manifest.substring(from, end).trim();
+    if (body == "") return ""
+
+    def packageNamePattern = 'package=\".*\"'
+    def packageNameMatcher = manifest.substring(0, from) =~ packageNamePattern
+    packageNameMatcher.matches()
+    def packageName = packageNameMatcher[0].substring(packageNameMatcher[0].indexOf("\"") + 1, packageNameMatcher[0].length() - 1)
+
+    def namePattern = 'android:name=\".*\"'
+    def nameMatcher = body =~ namePattern
+    nameMatcher.matches()
+    nameMatcher.each {
+        def name = it.substring(it.indexOf("\"") + 1, it.length() - 1);
+        if (name[0] == ".") {
+            body = body.replaceAll("\"" + name + "\"", "\"" + packageName + name + "\"")
+        }
+    }
+    return body
+}
+
+def microModuleHandler = { ->
+
+    File moduleDir = new File("$projectDir");
+    String[] microModuleDirs = moduleDir.list();
+    if (!microModuleDirs.toString().contains('main')) {
+        throw new GradleException('without micro-module with name \'main\'')
+    }
+
+    def collection = files { moduleDir.listFiles() }
+    collection.each { File microModuleDir ->
+        if (!microModuleDir.isDirectory()) return
+
+        // check [micro.properties] exists or not
+        File microModulePropertiesFile = new File(microModuleDir.absolutePath + '/micro.properties');
+        if (!microModulePropertiesFile.exists()) return
+
+        // read library properties
+        def microModuleProperties = new Properties()
+        microModulePropertiesFile.withInputStream { microModuleProperties.load(it) }
+        microModuleProperties = new ConfigSlurper().parse(microModuleProperties)
+
+        def enable = microModuleProperties.getProperty('enable')
+        if (enable.size() != 0 && !enable.toBoolean()) return
+
+        def microModuleName = microModuleDir.getName();
+
+        // add aidl.srcDir
+        def aidlSrcDir = microModuleProperties.getProperty('aidl.srcDir')
+        if (aidlSrcDir.size() == 0) {
+            aidlSrcDir = microModuleName + "/src/main/aidl";
+        }
+        aidlSrcDir = aidlSrcDir.toString()
+        if (!aidlSrcDirs.contains(aidlSrcDir)) {
+            aidlSrcDirs << aidlSrcDir
+        }
+
+        // add assets.srcDir
+        def assetsSrcDir = microModuleProperties.getProperty('assets.srcDir')
+        if (assetsSrcDir.size() == 0) {
+            assetsSrcDir = microModuleName + "/src/main/assets";
+        }
+        assetsSrcDir = assetsSrcDir.toString()
+        if (!assetsSrcDirs.contains(assetsSrcDir)) {
+            assetsSrcDirs << assetsSrcDir
+        }
+
+        // add jni.srcDir
+        def jniSrcDir = microModuleProperties.getProperty('jni.srcDir')
+        if (jniSrcDir.size() == 0) {
+            jniSrcDir = microModuleName + "/src/main/jni";
+        }
+        jniSrcDir = jniSrcDir.toString()
+        if (!jniSrcDirs.contains(jniSrcDir)) {
+            jniSrcDirs << jniSrcDir
+        }
+
+        // add jniLibs.srcDir
+        def jniLibsSrcDir = microModuleProperties.getProperty('jniLibs.srcDir')
+        if (jniLibsSrcDir.size() == 0) {
+            jniLibsSrcDir = microModuleName + "/src/main/jniLibs";
+        }
+        jniLibsSrcDir = jniLibsSrcDir.toString()
+        if (!jniLibsSrcDirs.contains(jniLibsSrcDir)) {
+            jniLibsSrcDirs << jniLibsSrcDir
+        }
+
+        // add java.srcDir
+        def javaSrcDir = microModuleProperties.getProperty('java.srcDir')
+        if (javaSrcDir.size() == 0) {
+            javaSrcDir = microModuleName + "/src/main/java";
+        }
+        javaSrcDir = javaSrcDir.toString()
+        if (!javaSrcDirs.contains(javaSrcDir)) {
+            javaSrcDirs << javaSrcDir
+        }
+
+        // add res.srcDir
+        def resSrcDir = microModuleProperties.getProperty('res.srcDir')
+        if (resSrcDir.size() == 0) {
+            resSrcDir = microModuleName + "/src/main/res";
+        }
+        resSrcDir = resSrcDir.toString()
+        if (!resSrcDirs.contains(resSrcDir)) {
+            resSrcDirs << resSrcDir
+        }
+
+        // add manifest.srcFile
+        def manifestSrcFile = microModuleProperties.getProperty('manifest.srcFile')
+        if (manifestSrcFile.size() == 0) {
+            manifestSrcFile = microModuleName + "/src/AndroidManifest.xml";
+        }
+        manifestSrcFile = manifestSrcFile.toString()
+        if (microModuleName == 'main') {
+            mainMicroAndroidManifestFile = manifestSrcFile
+        } else if (!manifestSrcFiles.contains(manifestSrcFile)) {
+            manifestSrcFiles << manifestSrcFile
+        }
+
+    }
+
+    def microModuleManifest = ''
+    for (int i = 0; i < manifestSrcFiles.size(); i++) {
+        def srcFilePath = manifestSrcFiles[i].toString()
+        def name = srcFilePath.subSequence(0, srcFilePath.indexOf("/"))
+        File manifestFile = new File("$projectDir" + "/" + srcFilePath)
+        if (!manifestFile.exists()) continue
+        def body = filterManifest(manifestFile.getText())
+        if (body == "") continue
+        microModuleManifest += "        <!-- MICRO MODULE START: " + name + " -->\n        " + body + "\n        <!-- MICRO MODULE END: " + name + " -->\n\n";
+    }
+
+    def mainMicroAndroidManifest = file(mainMicroAndroidManifestFile).getText().toString().trim()
+    def applicationPattern = '</\\s{0,}application\\s{0,}>'
+    def applicationMatcher = mainMicroAndroidManifest =~ applicationPattern
+    applicationMatcher.matches()
+    def from = mainMicroAndroidManifest.indexOf(applicationMatcher[0])
+    def moduleAndroidManifest = mainMicroAndroidManifest.substring(0, from).toString().trim() + "\n\n"
+    moduleAndroidManifest += microModuleManifest
+    moduleAndroidManifest += "    " + mainMicroAndroidManifest.substring(from, mainMicroAndroidManifest.length()).toString().trim()
+
+    new File("$buildDir").mkdirs()
+    def file = new File("$buildDir\\AndroidManifest.xml")
+    file.createNewFile()
+    file.write(moduleAndroidManifest)
+
+    android.sourceSets.main.aidl.srcDirs = aidlSrcDirs
+    android.sourceSets.main.assets.srcDirs = assetsSrcDirs
+    android.sourceSets.main.java.srcDirs = javaSrcDirs
+    android.sourceSets.main.jni.srcDirs = jniSrcDirs
+    android.sourceSets.main.jniLibs.srcDirs = jniLibsSrcDirs
+    android.sourceSets.main.res.srcDirs = resSrcDirs
+    android.sourceSets.main.manifest.srcFile "$buildDir/AndroidManifest.xml"
+}
+
+task microModuleTask {
+    microModuleHandler()
+}
+
+preBuild.doFirst {
+    microModuleHandler()
+}
