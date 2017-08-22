@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 //apply from:  '../micro.gradle'
-apply from:  '../micro_reference.gradle'
+apply from: '../micro_reference.gradle'
 
 android {
     compileSdkVersion 25
@@ -19,8 +19,4 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-}
-
-dependencies {
-
 }

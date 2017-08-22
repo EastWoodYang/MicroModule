@@ -1,3 +1,17 @@
+import com.android.manifmerger.ManifestMerger2
+import com.android.manifmerger.MergingReport
+import com.android.manifmerger.XmlDocument
+import com.android.utils.ILogger
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:manifest-merger:25.3.0"
+    }
+}
+
 def aidlSrcDirs = []
 def assetsSrcDirs = []
 def javaSrcDirs = []
@@ -6,10 +20,32 @@ def jniLibsSrcDirs = []
 def manifestSrcFiles = []
 def resSrcDirs = []
 
+def logger = new ILogger() {
+    @Override
+    void error(Throwable t, String msgFormat, Object... args) {
+
+    }
+
+    @Override
+    void warning(String msgFormat, Object... args) {
+
+    }
+
+    @Override
+    void info(String msgFormat, Object... args) {
+
+    }
+
+    @Override
+    void verbose(String msgFormat, Object... args) {
+
+    }
+};
+
 def addLibrary
 addLibrary = { libraryPath ->
     // check [micro.properties] exists or not
-    File libraryPropertiesFile = new File(libraryPath + '/micro.properties');
+    File libraryPropertiesFile = new File(libraryPath + '\\micro.properties');
     if (!libraryPropertiesFile.exists()) return
 
     def libraryName = file(libraryPath).name
@@ -32,7 +68,7 @@ addLibrary = { libraryPath ->
     // add aidl.srcDir
     def aidlSrcDir = libraryProperties.getProperty('aidl.srcDir')
     if (aidlSrcDir.size() == 0) {
-        aidlSrcDir = libraryName + "/src/main/aidl";
+        aidlSrcDir = libraryName + "\\src\\main\\aidl";
     }
     aidlSrcDir = aidlSrcDir.toString()
     if (!aidlSrcDirs.contains(aidlSrcDir)) {
@@ -42,7 +78,7 @@ addLibrary = { libraryPath ->
     // add assets.srcDir
     def assetsSrcDir = libraryProperties.getProperty('assets.srcDir')
     if (assetsSrcDir.size() == 0) {
-        assetsSrcDir = libraryName + "/src/main/assets";
+        assetsSrcDir = libraryName + "\\src\\main\\assets";
     }
     assetsSrcDir = assetsSrcDir.toString()
     if (!assetsSrcDirs.contains(assetsSrcDir)) {
@@ -52,7 +88,7 @@ addLibrary = { libraryPath ->
     // add jni.srcDir
     def jniSrcDir = libraryProperties.getProperty('jni.srcDir')
     if (jniSrcDir.size() == 0) {
-        jniSrcDir = libraryName + "/src/main/jni";
+        jniSrcDir = libraryName + "\\src\\main\\jni";
     }
     jniSrcDir = jniSrcDir.toString()
     if (!jniSrcDirs.contains(jniSrcDir)) {
@@ -62,7 +98,7 @@ addLibrary = { libraryPath ->
     // add jniLibs.srcDir
     def jniLibsSrcDir = libraryProperties.getProperty('jniLibs.srcDir')
     if (jniLibsSrcDir.size() == 0) {
-        jniLibsSrcDir = libraryName + "/src/main/jniLibs";
+        jniLibsSrcDir = libraryName + "\\src\\main\\jniLibs";
     }
     jniLibsSrcDir = jniLibsSrcDir.toString()
     if (!jniLibsSrcDirs.contains(jniLibsSrcDir)) {
@@ -72,7 +108,7 @@ addLibrary = { libraryPath ->
     // add java.srcDir
     def javaSrcDir = libraryProperties.getProperty('java.srcDir')
     if (javaSrcDir.size() == 0) {
-        javaSrcDir = libraryName + "/src/main/java";
+        javaSrcDir = libraryName + "\\src\\main\\java";
     }
     javaSrcDir = javaSrcDir.toString()
     if (!javaSrcDirs.contains(javaSrcDir)) {
@@ -82,7 +118,7 @@ addLibrary = { libraryPath ->
     // add res.srcDir
     def resSrcDir = libraryProperties.getProperty('res.srcDir')
     if (resSrcDir.size() == 0) {
-        resSrcDir = libraryName + "/src/main/res";
+        resSrcDir = libraryName + "\\src\\main\\res";
     }
     resSrcDir = resSrcDir.toString()
     if (!resSrcDirs.contains(resSrcDir)) {
@@ -92,36 +128,12 @@ addLibrary = { libraryPath ->
     // add manifest.srcFile
     def manifestSrcFile = libraryProperties.getProperty('manifest.srcFile')
     if (manifestSrcFile.size() == 0) {
-        manifestSrcFile = libraryName + "/src/AndroidManifest.xml";
+        manifestSrcFile = libraryName + "\\src\\AndroidManifest.xml";
     }
     manifestSrcFile = manifestSrcFile.toString()
     if (!manifestSrcFiles.contains(manifestSrcFile)) {
         manifestSrcFiles << manifestSrcFile
     }
-}
-
-def filterManifest = { manifest ->
-
-    def from = manifest.indexOf("<application>") + "<application>".length()
-    def end = manifest.indexOf("</application>")
-    def body = manifest.substring(from, end).trim();
-    if (body == "") return ""
-
-    def packageNamePattern = 'package=\".*\"'
-    def packageNameMatcher = manifest.substring(0, from) =~ packageNamePattern
-    packageNameMatcher.matches()
-    def packageName = packageNameMatcher[0].substring(packageNameMatcher[0].indexOf("\"") + 1, packageNameMatcher[0].length() - 1)
-
-    def namePattern = 'android:name=\".*\"'
-    def nameMatcher = body =~ namePattern
-    nameMatcher.matches()
-    nameMatcher.each {
-        def name = it.substring(it.indexOf("\"") + 1, it.length() - 1);
-        if (name[0] == ".") {
-            body = body.replaceAll("\"" + name + "\"", "\"" + packageName + name + "\"")
-        }
-    }
-    return body
 }
 
 def microModuleHandler = { ->
@@ -132,28 +144,22 @@ def microModuleHandler = { ->
         throw new GradleException('without micro-module with name \'main\'')
     }
 
-    def mainLibrary = "$projectDir" + '/main';
+    def mainLibrary = "$projectDir\\main";
     addLibrary(mainLibrary)
 
-    def libraryAndroidManifest = ''
-    for (int i = 0; i < manifestSrcFiles.size() - 1; i++) {
-        def srcFilePath = manifestSrcFiles[i].toString()
-        def name = srcFilePath.subSequence(0, srcFilePath.indexOf("/"))
-        File manifestFile = new File("$projectDir" + "/" + srcFilePath)
-        if (!manifestFile.exists()) continue
-        def body = filterManifest(manifestFile.getText())
-        if (body == "") continue
-        libraryAndroidManifest += "        <!-- MICRO MODULE START: " + name + " -->\n        " + body + "\n        <!-- MICRO MODULE END: " + name + " -->\n\n";
-    }
+    File mainManifestFile = new File("$projectDir\\" + manifestSrcFiles[manifestSrcFiles.size() - 1]);
 
-    def mainMicroAndroidManifest = file(manifestSrcFiles[manifestSrcFiles.size() - 1]).getText().toString().trim()
-    def applicationPattern = '</\\s{0,}application\\s{0,}>'
-    def applicationMatcher = mainMicroAndroidManifest =~ applicationPattern
-    applicationMatcher.matches()
-    def from = mainMicroAndroidManifest.indexOf(applicationMatcher[0])
-    def moduleAndroidManifest = mainMicroAndroidManifest.substring(0, from).toString().trim() + "\n\n"
-    moduleAndroidManifest += libraryAndroidManifest
-    moduleAndroidManifest += "    " + mainMicroAndroidManifest.substring(from, mainMicroAndroidManifest.length()).toString().trim()
+    ManifestMerger2.MergeType mergeType = ManifestMerger2.MergeType.APPLICATION
+    XmlDocument.Type documentType = XmlDocument.Type.MAIN;
+    ManifestMerger2.Invoker invoker = new ManifestMerger2.Invoker(mainManifestFile, logger, mergeType, documentType);
+    for (int i = 0; i < manifestSrcFiles.size() - 1; i++) {
+        File microManifestFile = new File("$projectDir\\" + manifestSrcFiles[i]);
+        if (microManifestFile.exists()) {
+            invoker.addLibraryManifest(microManifestFile)
+        }
+    }
+    def mergingReport = invoker.merge()
+    def moduleAndroidManifest = mergingReport.getMergedDocument(MergingReport.MergedManifestKind.MERGED)
 
     new File("$buildDir").mkdirs()
     def file = new File("$buildDir\\AndroidManifest.xml")
@@ -166,7 +172,7 @@ def microModuleHandler = { ->
     android.sourceSets.main.jni.srcDirs = jniSrcDirs
     android.sourceSets.main.jniLibs.srcDirs = jniLibsSrcDirs
     android.sourceSets.main.res.srcDirs = resSrcDirs
-    android.sourceSets.main.manifest.srcFile "$buildDir/AndroidManifest.xml"
+    android.sourceSets.main.manifest.srcFile "$buildDir\\AndroidManifest.xml"
 }
 
 task microModuleTask {
