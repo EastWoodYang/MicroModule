@@ -60,7 +60,7 @@ def microModuleHandler = { ->
         File microModulePropertiesFile = new File(microModuleDir.absolutePath + '\\micro.properties');
         if (!microModulePropertiesFile.exists()) return
 
-        // read library properties
+        // read micro module properties
         def microModuleProperties = new Properties()
         microModulePropertiesFile.withInputStream { microModuleProperties.load(it) }
         microModuleProperties = new ConfigSlurper().parse(microModuleProperties)

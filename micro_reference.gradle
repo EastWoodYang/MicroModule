@@ -50,7 +50,7 @@ addLibrary = { libraryPath ->
 
     def libraryName = file(libraryPath).name
 
-    // read library properties
+    // read micro module properties
     def libraryProperties = new Properties()
     libraryPropertiesFile.withInputStream { libraryProperties.load(it) }
     libraryProperties = new ConfigSlurper().parse(libraryProperties)
