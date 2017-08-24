@@ -1,5 +1,5 @@
 # MicroModule
-Divide module file structure into multi-parts
+restrict code boundary, divide module file structure into multi-parts
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
