@@ -46,6 +46,8 @@ class MicroModulePlugin implements Plugin<Project> {
     void apply(Project project) {
         this.project = project
 
+
+
         microModuleExtension = project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project)
 
         project.afterEvaluate {

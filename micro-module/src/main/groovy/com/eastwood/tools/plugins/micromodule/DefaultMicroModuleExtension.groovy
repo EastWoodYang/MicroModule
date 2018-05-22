@@ -1,7 +1,11 @@
 package com.eastwood.tools.plugins.micromodule
 
+import com.eastwood.tools.plugins.create.CreateMicroModule
+import com.eastwood.tools.plugins.create.CreateMicroModuleTask
+import org.gradle.api.Action
 import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.api.tasks.TaskContainer
 
 public class DefaultMicroModuleExtension implements MicroModuleExtension {
 
@@ -63,4 +67,62 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
         return microModulePath.startsWith(":") ? microModulePath.substring(1) : microModulePath
     }
 
+
+    private CreateMicroModule createMicroModule = new CreateMicroModule() {
+
+        def prefixName
+        def moduleName
+        def packageName
+
+        @Override
+        void prefixName(String name) {
+            prefixName = name
+        }
+
+        @Override
+        void moduleName(String name) {
+            moduleName = name
+        }
+
+        @Override
+        void packageName(String name) {
+            packageName = name
+        }
+
+        @Override
+        String prefixName() {
+            return prefixName
+        }
+
+        @Override
+        String moduleName() {
+            return moduleName
+        }
+
+        @Override
+        String packageName() {
+            return packageName
+        }
+    };
+
+    @Override
+    void createMicroModule(Action<CreateMicroModule> configureAction) {
+        configureAction.execute(createMicroModule)
+        if(createMicroModule.moduleName() != null) {
+            configureCreateMicroModuleTask()
+        }
+    }
+
+    def configureCreateMicroModuleTask() {
+        TaskContainer tasks = project.getTasks();
+        CreateMicroModuleTask createMicroModuleTask = tasks.create('createMicroModule', CreateMicroModuleTask.class);
+        createMicroModuleTask.setDescription("Create Micro Module.");
+        createMicroModuleTask.setGroup('create');
+
+        if(createMicroModule.prefixName() != null) {
+            createMicroModuleTask.prefixName = createMicroModule.prefixName()
+        }
+        createMicroModuleTask.moduleName = createMicroModule.moduleName()
+        createMicroModuleTask.packageName = createMicroModule.packageName()
+    }
 }
