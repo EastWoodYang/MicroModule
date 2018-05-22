@@ -1,22 +1,41 @@
+apply plugin: 'micro-module'
 apply plugin: 'com.android.application'
 
-//apply from:  '../micro.gradle'
-apply from: '../micro_reference.gradle'
+apply plugin: 'code-check'
 
 android {
     compileSdkVersion 25
-    buildToolsVersion "26.0.0"
     defaultConfig {
         applicationId "com.ycdyng.module.micro"
         minSdkVersion 15
         targetSdkVersion 25
         versionCode 1
         versionName "1.0"
+
+        manifestPlaceholders = [activityLabel: "defaultName"]
     }
+
+    flavorDimensions "tier"
+
+    productFlavors {
+        AProductFlavor {
+            dimension "tier"
+        }
+    }
+
     buildTypes {
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+
     }
+
+}
+
+microModule {
+
+    include ':p_base', ':p_common', ':p_home'
+
 }

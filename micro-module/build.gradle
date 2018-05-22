@@ -1,0 +1,26 @@
+apply plugin: 'groovy'
+apply plugin: 'java'
+
+group 'com.winwin.common'
+sourceCompatibility = 1.8
+
+repositories {
+    jcenter()
+    google()
+}
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+    implementation 'net.sf.kxml:kxml2:2.3.0'
+    implementation 'com.android.tools.build:gradle:3.0.1'
+    implementation "com.android.tools.build:manifest-merger:26.0.1"
+}
+
+apply from: 'http://android.yingyinglicai.net/upload.gradle'
+
+uploadNexus({
+    groupId = 'com.eastwood.tools.plugin'
+    artifactId = 'micro-module'
+    version = '0.0.1-SNAPSHOT'
+})
