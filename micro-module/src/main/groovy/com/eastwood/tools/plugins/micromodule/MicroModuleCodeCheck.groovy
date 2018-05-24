@@ -286,7 +286,6 @@ class MicroModuleCodeCheck {
     }
 
     boolean isReference(String microModuleName, String from, List<String> original) {
-        println microModuleName + " " + from + " " + original
         List<String> referenceList = microModuleReferenceMap.get(microModuleName)
         if (referenceList == null) return false
         if (referenceList.contains(from)) {
