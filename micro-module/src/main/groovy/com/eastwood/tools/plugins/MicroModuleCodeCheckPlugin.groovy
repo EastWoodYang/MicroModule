@@ -2,20 +2,21 @@ package com.eastwood.tools.plugins
 
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestedExtension
-import com.eastwood.tools.plugins.micromodule.DefaultMicroModuleExtension
-import com.eastwood.tools.plugins.micromodule.MicroModuleCodeCheck
-import com.eastwood.tools.plugins.micromodule.MicroModuleExtension
+import com.eastwood.tools.plugins.core.MicroModuleCodeCheck
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 class MicroModuleCodeCheckPlugin implements Plugin<Project> {
 
     Project project
+    Map<String, List<String>> microModuleReferenceMap
 
     void apply(Project project) {
         this.project = project
 
         project.afterEvaluate {
+            microModuleReferenceMap = MicroModulePlugin.microModuleReferenceMap
+
             def taskNamePrefix
             TestedExtension extension = (TestedExtension) project.extensions.getByName("android")
             if (extension instanceof LibraryExtension) {
@@ -37,28 +38,29 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
     }
 
     def check(taskPrefix, buildType, productFlavor) {
+        MicroModuleCodeCheck microModuleCodeCheck
+
         def buildTypeFirstUp = upperCase(buildType)
         def productFlavorFirstUp = productFlavor != null ? upperCase(productFlavor) : ""
-        def mergeTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
-        def compileTaskName = "compile${productFlavorFirstUp}${buildTypeFirstUp}JavaWithJavac"
 
-        MicroModuleCodeCheck microModuleCodeCheck
-        def mergeResourcesTask = project.tasks.findByName(mergeTaskName)
-        if (mergeResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project)
-            mergeResourcesTask.doLast {
-                microModuleCodeCheck.checkResources(mergeTaskName)
+        def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
+        def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
+        if (packageResourcesTask != null) {
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
+            packageResourcesTask.doLast {
+                microModuleCodeCheck.checkResources(mergeResourcesTaskName)
             }
         }
 
-        def compileJavaTask = project.tasks.findByName(compileTaskName)
+        def compileJavaTaskName = "compile${productFlavorFirstUp}${buildTypeFirstUp}JavaWithJavac"
+        def compileJavaTask = project.tasks.findByName(compileJavaTaskName)
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
                 if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project)
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
                 }
                 def productFlavorBuildType = productFlavor != null ? (productFlavor + File.separator + buildType) : buildType
-                microModuleCodeCheck.checkClasses(productFlavorBuildType, mergeTaskName)
+                microModuleCodeCheck.checkClasses(productFlavorBuildType, mergeResourcesTaskName)
             }
         }
     }

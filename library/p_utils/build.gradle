@@ -1,0 +1,3 @@
+dependencies {
+//    implementation microModule(':micro-module-name')
+}

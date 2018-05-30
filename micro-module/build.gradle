@@ -1,7 +1,7 @@
 apply plugin: 'groovy'
 apply plugin: 'java'
 
-group 'com.winwin.common'
+group 'com.eastwood.tools.plugins'
 sourceCompatibility = 1.8
 
 repositories {
@@ -13,6 +13,43 @@ dependencies {
     compile gradleApi()
     compile localGroovy()
     implementation 'net.sf.kxml:kxml2:2.3.0'
-    implementation 'com.android.tools.build:gradle:3.0.1'
-    implementation "com.android.tools.build:manifest-merger:26.0.1"
+    implementation 'com.android.tools.build:gradle:3.1.2'
 }
+
+apply plugin: 'maven'
+
+def groupId = 'com.eastwood.tools.plugins'
+def artifactId = 'micro-module'
+def version = '1.0.0'
+
+def localReleaseDest = "${buildDir}/release/${version}"
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.groupId = groupId
+            pom.artifactId = artifactId
+            pom.version = version
+            // Add other pom properties here if you want (developer details / licenses)
+            repository(url: "file://${localReleaseDest}")
+        }
+    }
+}
+
+
+task zipRelease(type: Zip) {
+    from localReleaseDest
+    destinationDir buildDir
+    archiveName "release-${version}.zip"
+}
+
+task generateRelease {
+    doLast {
+        println "Release ${version} can be found at ${localReleaseDest}/"
+        println "Release ${version} zipped can be found ${buildDir}/release-${version}.zip"
+    }
+}
+
+generateRelease.dependsOn(uploadArchives)
+generateRelease.dependsOn(zipRelease)
+

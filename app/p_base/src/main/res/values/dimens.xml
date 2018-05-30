@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <dimen name="a">1dp</dimen>
-    <dimen name="ab">22dp</dimen>
-    <dimen name="abc">12dp</dimen>
-
-</resources>

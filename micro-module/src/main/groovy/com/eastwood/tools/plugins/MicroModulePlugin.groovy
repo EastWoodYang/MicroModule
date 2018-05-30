@@ -5,10 +5,10 @@ import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
 import com.android.manifmerger.XmlDocument
 import com.android.utils.ILogger
-import com.eastwood.tools.plugins.micromodule.AndroidManifest
-import com.eastwood.tools.plugins.micromodule.DefaultMicroModuleExtension
-import com.eastwood.tools.plugins.micromodule.MicroModule
-import com.eastwood.tools.plugins.micromodule.MicroModuleExtension
+import com.eastwood.tools.plugins.core.AndroidManifest
+import com.eastwood.tools.plugins.core.DefaultMicroModuleExtension
+import com.eastwood.tools.plugins.core.MicroModule
+import com.eastwood.tools.plugins.core.MicroModuleExtension
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -17,6 +17,10 @@ class MicroModulePlugin implements Plugin<Project> {
 
     Project project
     DefaultMicroModuleExtension microModuleExtension
+
+    MicroModule currentMicroModule
+
+    public static Map<String, List<String>> microModuleReferenceMap
 
     public final static String RPath = "/build/generated/source/r/"
     public final static String mainManifestPath = "/src/main/AndroidManifest.xml"
@@ -45,15 +49,30 @@ class MicroModulePlugin implements Plugin<Project> {
 
     void apply(Project project) {
         this.project = project
-
-
-
         microModuleExtension = project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project)
 
+        project.dependencies.metaClass.microModule { path ->
+            microModuleDependencyHandler(path)
+            return []
+        }
+
         project.afterEvaluate {
+
+            microModuleReferenceMap = new HashMap<>()
+            checkMainMicroModule()
+            // apply
+            applyMicroModuleBuild(microModuleExtension.mainMicroModule)
+            List<MicroModule> includeMicroModules = microModuleExtension.includeMicroModules.clone()
+            includeMicroModules.each {
+                if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+                applyMicroModuleBuild(it)
+            }
+
             handleMainMicroModule()
 
             project.tasks.preBuild.doFirst {
+
+                microModuleReferenceMap = new HashMap<>()
                 handleMainMicroModule()
                 generateR()
             }
@@ -61,6 +80,26 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def handleMainMicroModule() {
+        clearModuleSourceSet("main")
+
+        // include
+        includeMainMicroModule(microModuleExtension.mainMicroModule)
+        microModuleExtension.includeMicroModules.each {
+            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+            includeMainMicroModule(it)
+        }
+
+        // check
+        checkMicroModuleReference(microModuleExtension.mainMicroModule)
+        microModuleExtension.includeMicroModules.each {
+            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+            checkMicroModuleReference(it)
+        }
+
+        mergeMainAndroidManifest()
+    }
+
+    def checkMainMicroModule() {
         if (microModuleExtension.mainMicroModule == null) {
             microModuleExtension.mainMicroModule = new MicroModule()
             def name = ":main"
@@ -71,16 +110,6 @@ class MicroModulePlugin implements Plugin<Project> {
             microModuleExtension.mainMicroModule.name = name
             microModuleExtension.mainMicroModule.microModuleDir = microModuleDir
         }
-
-        clearModuleSrcDirs("main")
-
-        microModuleExtension.includeMicroModules.each {
-            includeMainMicroModule(it)
-        }
-
-        includeMainMicroModule(microModuleExtension.mainMicroModule)
-
-        mergeMainAndroidManifest()
     }
 
     def mergeMainAndroidManifest() {
@@ -90,6 +119,7 @@ class MicroModulePlugin implements Plugin<Project> {
         ManifestMerger2.Invoker invoker = new ManifestMerger2.Invoker(mainManifestFile, logger, mergeType, documentType)
         invoker.withFeatures(ManifestMerger2.Invoker.Feature.NO_PLACEHOLDER_REPLACEMENT)
         microModuleExtension.includeMicroModules.each {
+            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
             def microManifestFile = new File(it.microModuleDir, mainManifestPath)
             if (microManifestFile.exists()) {
                 invoker.addLibraryManifest(microManifestFile)
@@ -118,8 +148,6 @@ class MicroModulePlugin implements Plugin<Project> {
         includeMicroModule(microModule, "main")
         includeMicroModule(microModule, "androidTest")
         includeMicroModule(microModule, "test")
-
-        checkMicroModuleReference(microModule)
     }
 
     def includeMicroModule(MicroModule microModule, def type) {
@@ -137,7 +165,7 @@ class MicroModulePlugin implements Plugin<Project> {
         obj.renderscript.srcDir(absolutePath + "/src/${type}/rs")
     }
 
-    def clearModuleSrcDirs(def type) {
+    def clearModuleSourceSet(def type) {
         def srcDirs = []
         BaseExtension android = project.extensions.getByName('android')
         def obj = android.sourceSets.getByName(type)
@@ -153,16 +181,11 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def checkMicroModuleReference(MicroModule microModule) {
-        def microPropertiesFile = new File(microModule.microModuleDir, 'micro.properties')
-        // check [micro.properties] exists or not
-        if (!microPropertiesFile.exists()) return
-        // read micro-module properties
-        def microProperties = new Properties()
-        microPropertiesFile.withInputStream { microProperties.load(it) }
-        microProperties = new ConfigSlurper().parse(microProperties)
-        // check micro-module reference
-        microProperties.microModule.reference.each {
-            isReferenceMicroModuleInclude(microModule, it.value)
+        List<String> referenceList = microModuleReferenceMap.get(microModule.name)
+        if (referenceList == null) return
+
+        for (String path : referenceList) {
+            isReferenceMicroModuleInclude(microModule, path)
         }
     }
 
@@ -205,16 +228,29 @@ class MicroModulePlugin implements Plugin<Project> {
     def generateRByProductFlavorBuildType(mainPackageName, buildType, productFlavor) {
         def buildTypeFirstUp = upperCase(buildType)
         def productFlavorFirstUp = productFlavor != null ? upperCase(productFlavor) : ""
-        def taskName = "process${productFlavorFirstUp}${buildTypeFirstUp}Resources"
-        def mergeResourcesTask = project.tasks.findByName(taskName)
-        if (mergeResourcesTask != null) {
-            mergeResourcesTask.doLast {
+        def processResourcesTaskName = "process${productFlavorFirstUp}${buildTypeFirstUp}Resources"
+        def processResourcesTask = project.tasks.findByName(processResourcesTaskName)
+        if (processResourcesTask != null) {
+            processResourcesTask.doLast {
                 def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
                 def path = project.projectDir.absolutePath + RPath + productFlavorBuildType + "/" + mainPackageName.replace(".", "/") + "/R.java"
                 def file = project.file(path)
                 def newR = file.text.replace("public final class R", "public class R")
                 file.write(newR)
                 generateMicroModuleResources(mainPackageName, productFlavorBuildType)
+            }
+        } else {
+            def generateRFileTaskName = "generate${productFlavorFirstUp}${buildTypeFirstUp}RFile"
+            def generateRFileTask = project.tasks.findByName(generateRFileTaskName)
+            if (generateRFileTask != null) {
+                generateRFileTask.doLast {
+                    def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
+                    def path = project.projectDir.absolutePath + RPath + productFlavorBuildType + "/" + mainPackageName.replace(".", "/") + "/R.java"
+                    def file = project.file(path)
+                    def newR = file.text.replace("public final class R", "public class R")
+                    file.write(newR)
+                    generateMicroModuleResources(mainPackageName, productFlavorBuildType)
+                }
             }
         }
     }
@@ -250,6 +286,34 @@ class MicroModulePlugin implements Plugin<Project> {
             project.file(path).mkdirs()
             file.write("package " + microModulePackageName + ";\n\n/** This class is generated by micro-module plugin, DO NOT MODIFY. */\npublic class R extends " + packageName + ".R {\n\n}")
             println "[micro-module] - microModule${it.name} generate " + microModulePackageName + '.R.java'
+        }
+    }
+
+    void applyMicroModuleBuild(MicroModule microModule) {
+        def microModuleBuild = new File(microModule.microModuleDir, "build.gradle")
+        if (microModuleBuild.exists()) {
+            currentMicroModule = microModule
+            project.apply from: microModuleBuild.absolutePath
+        }
+    }
+
+    def microModuleDependencyHandler(String path) {
+        if (microModuleExtension == null || currentMicroModule == null) {
+            return
+        }
+        MicroModule microModule = microModuleExtension.buildMicroModule(path)
+        if (microModule == null) {
+            throw new GradleException("can't find specified microModule '${path}', which is referenced by microModle${currentMicroModule.name}")
+        }
+        List<String> referenceList = microModuleReferenceMap.get(currentMicroModule.name)
+        if (referenceList == null) {
+            referenceList = new ArrayList<>()
+            referenceList.add(microModule.name)
+            microModuleReferenceMap.put(currentMicroModule.name, referenceList)
+        } else {
+            if (!referenceList.contains(microModule.name)) {
+                referenceList.add(microModule.name)
+            }
         }
     }
 
