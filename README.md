@@ -8,11 +8,13 @@ Provides an action which allow you quickly create MicroModule.
 * You will find "New Project/Module with MicroModule..." action in [File]->[New] group. 
 * Right click at project or module dir, in [New] group, you will find "MicroModule" action. 
 
+<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/2.png'/>
+
 **Install Step**: 
 1. open [File] -> [Settings...] -> [plugins] -> [Browse repositories...]
 2. and search name **MicroModule**
 
-<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/2.png'/>
+<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/3.png'/>
 
 **Plugin detail**: 
 
