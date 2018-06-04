@@ -46,6 +46,7 @@ dependencies {
 }
 
 microModule {
+    include ':p_home'
     include ':p_common'
 
     include ':p_base'
