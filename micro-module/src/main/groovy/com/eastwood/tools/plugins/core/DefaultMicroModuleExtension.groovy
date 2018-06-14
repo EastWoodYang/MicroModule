@@ -9,6 +9,7 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     MicroModule mainMicroModule
     List<MicroModule> includeMicroModules
+    OnMicroModuleListener onMicroModuleListener;
 
     DefaultMicroModuleExtension(Project project) {
         this.project = project
@@ -24,6 +25,9 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
                 throw new GradleException("can't find specified micro-module '${microModulePaths[i]}'.")
             }
             addMicroModule(microModule)
+            if(onMicroModuleListener != null) {
+                onMicroModuleListener.addMicroModule(microModule, false)
+            }
         }
     }
 
@@ -32,6 +36,9 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
         mainMicroModule = buildMicroModule(microModulePath)
         if (mainMicroModule == null) {
             throw new GradleException("can't find specified micro-module '${microModulePath}'.")
+        }
+        if(onMicroModuleListener != null) {
+            onMicroModuleListener.addMicroModule(mainMicroModule, true)
         }
     }
 
@@ -71,4 +78,7 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
         return microModulePath.startsWith(":") ? microModulePath.substring(1) : microModulePath
     }
 
+    interface OnMicroModuleListener {
+        void addMicroModule(MicroModule microModule, boolean mainMicroModule)
+    }
 }

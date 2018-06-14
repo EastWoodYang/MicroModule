@@ -1,6 +1,6 @@
 apply plugin: 'micro-module'
 apply plugin: 'com.android.application'
-//apply plugin: 'micro-module-code-check'
+apply plugin: 'micro-module-code-check'
 
 android {
     compileSdkVersion 27
@@ -33,6 +33,14 @@ android {
 
 }
 
+microModule {
+    include ':p_home'
+    include ':p_common'
+
+    include ':p_base'
+
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
@@ -45,10 +53,4 @@ dependencies {
     implementation project(':library')
 }
 
-microModule {
-    include ':p_home'
-    include ':p_common'
 
-    include ':p_base'
-
-}

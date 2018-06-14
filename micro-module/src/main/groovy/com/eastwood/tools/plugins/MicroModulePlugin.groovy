@@ -22,6 +22,8 @@ class MicroModulePlugin implements Plugin<Project> {
 
     public static Map<String, List<String>> microModuleReferenceMap
 
+    boolean originSourceSetCleared
+
     public final static String RPath = "/build/generated/source/r/"
     public final static String mainManifestPath = "/src/main/AndroidManifest.xml"
 
@@ -50,6 +52,29 @@ class MicroModulePlugin implements Plugin<Project> {
     void apply(Project project) {
         this.project = project
         microModuleExtension = project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project)
+        checkMainMicroModule()
+        microModuleExtension.onMicroModuleListener = new DefaultMicroModuleExtension.OnMicroModuleListener() {
+            @Override
+            void addMicroModule(MicroModule microModule, boolean mainMicroModule) {
+                if (!originSourceSetCleared) {
+                    clearMainMicroModule()
+                    if (!mainMicroModule) {
+                        includeMainMicroModule(microModuleExtension.mainMicroModule)
+                    }
+                    originSourceSetCleared = true
+                }
+
+                if (mainMicroModule) {
+                    clearMainMicroModule()
+                    includeMainMicroModule(microModuleExtension.mainMicroModule)
+                    microModuleExtension.includeMicroModules.each {
+                        if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+                        includeMainMicroModule(it)
+                    }
+                }
+                includeMainMicroModule(microModule)
+            }
+        }
 
         project.dependencies.metaClass.microModule { path ->
             microModuleDependencyHandler(path)
@@ -57,9 +82,14 @@ class MicroModulePlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate {
-
             microModuleReferenceMap = new HashMap<>()
-            checkMainMicroModule()
+
+            if (!originSourceSetCleared) {
+                clearMainMicroModule()
+                includeMainMicroModule(microModuleExtension.mainMicroModule)
+                originSourceSetCleared = true
+            }
+
             // apply
             applyMicroModuleBuild(microModuleExtension.mainMicroModule)
             List<MicroModule> includeMicroModules = microModuleExtension.includeMicroModules.clone()
@@ -73,21 +103,24 @@ class MicroModulePlugin implements Plugin<Project> {
             project.tasks.preBuild.doFirst {
 
                 microModuleReferenceMap = new HashMap<>()
+                setMicroModuleDir()
                 handleMainMicroModule()
                 generateR()
             }
         }
     }
 
-    def handleMainMicroModule() {
+    def setMicroModuleDir() {
         clearModuleSourceSet("main")
-
         // include
         includeMainMicroModule(microModuleExtension.mainMicroModule)
         microModuleExtension.includeMicroModules.each {
             if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
             includeMainMicroModule(it)
         }
+    }
+
+    def handleMainMicroModule() {
 
         // check
         checkMicroModuleReference(microModuleExtension.mainMicroModule)
@@ -148,6 +181,12 @@ class MicroModulePlugin implements Plugin<Project> {
         includeMicroModule(microModule, "main")
         includeMicroModule(microModule, "androidTest")
         includeMicroModule(microModule, "test")
+    }
+
+    def clearMainMicroModule() {
+        clearModuleSourceSet("main")
+        clearModuleSourceSet("androidTest")
+        clearModuleSourceSet("test")
     }
 
     def includeMicroModule(MicroModule microModule, def type) {
