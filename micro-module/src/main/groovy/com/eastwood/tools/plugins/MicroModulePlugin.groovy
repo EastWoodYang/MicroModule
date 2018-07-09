@@ -275,6 +275,7 @@ class MicroModulePlugin implements Plugin<Project> {
                 def path = project.projectDir.absolutePath + RPath + productFlavorBuildType + "/" + mainPackageName.replace(".", "/") + "/R.java"
                 def file = project.file(path)
                 def newR = file.text.replace("public final class R", "public class R")
+                newR = newR.replaceAll("public static int", "public static final int")
                 file.write(newR)
                 generateMicroModuleResources(mainPackageName, productFlavorBuildType)
             }
@@ -287,6 +288,7 @@ class MicroModulePlugin implements Plugin<Project> {
                     def path = project.projectDir.absolutePath + RPath + productFlavorBuildType + "/" + mainPackageName.replace(".", "/") + "/R.java"
                     def file = project.file(path)
                     def newR = file.text.replace("public final class R", "public class R")
+                    newR = newR.replaceAll("public static int", "public static final int")
                     file.write(newR)
                     generateMicroModuleResources(mainPackageName, productFlavorBuildType)
                 }
