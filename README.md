@@ -22,5 +22,5 @@ Provides an action which allow you quickly create MicroModule.
 
 
 ## More Detail
-[http://www.jianshu.com/p/7f31cd67d513](http://www.jianshu.com/p/7f31cd67d513)
+[https://www.jianshu.com/p/22f69f68e648](https://www.jianshu.com/p/22f69f68e648)
 (Chinese/中文)
