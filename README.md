@@ -1,5 +1,5 @@
 # MicroModule
-Divide module file structure into multi-parts, and restrict code boundary by compile-time check.
+rebuild a complete multi-submodule structure within the module.
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
