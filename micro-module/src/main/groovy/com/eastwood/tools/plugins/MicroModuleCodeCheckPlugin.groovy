@@ -10,12 +10,14 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
 
     Project project
     Map<String, List<String>> microModuleReferenceMap
+    Map<String, String> microModuleResourcePrefixMap
 
     void apply(Project project) {
         this.project = project
 
         project.afterEvaluate {
             microModuleReferenceMap = MicroModulePlugin.microModuleReferenceMap
+            microModuleResourcePrefixMap = MicroModulePlugin.microModuleResourcePrefixMap
 
             def taskNamePrefix
             TestedExtension extension = (TestedExtension) project.extensions.getByName("android")
@@ -46,7 +48,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
         def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
         if (packageResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap, microModuleResourcePrefixMap)
             packageResourcesTask.doLast {
                 microModuleCodeCheck.checkResources(mergeResourcesTaskName)
             }
@@ -57,7 +59,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
                 if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap, microModuleResourcePrefixMap)
                 }
                 def productFlavorBuildType = productFlavor != null ? (productFlavor + File.separator + buildType) : buildType
                 microModuleCodeCheck.checkClasses(productFlavorBuildType, mergeResourcesTaskName)

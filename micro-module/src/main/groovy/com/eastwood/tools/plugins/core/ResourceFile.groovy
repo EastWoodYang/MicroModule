@@ -5,4 +5,5 @@ class ResourceFile {
     String name
     Long lastModified
     String microModuleName
+    String prefix
 }

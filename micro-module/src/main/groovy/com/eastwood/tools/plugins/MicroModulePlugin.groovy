@@ -17,10 +17,11 @@ class MicroModulePlugin implements Plugin<Project> {
 
     Project project
     DefaultMicroModuleExtension microModuleExtension
-
     MicroModule currentMicroModule
 
     public static Map<String, List<String>> microModuleReferenceMap
+
+    public static Map<String, String> microModuleResourcePrefixMap
 
     boolean originSourceSetCleared
 
@@ -83,6 +84,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
         project.afterEvaluate {
             microModuleReferenceMap = new HashMap<>()
+            microModuleResourcePrefixMap = new HashMap<>()
 
             if (!originSourceSetCleared) {
                 clearMainMicroModule()
@@ -95,7 +97,15 @@ class MicroModulePlugin implements Plugin<Project> {
             List<MicroModule> includeMicroModules = microModuleExtension.includeMicroModules.clone()
             includeMicroModules.each {
                 if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+                def ext = project.extensions.findByName("ext")
+                if(ext != null && ext.properties.containsKey("resourcePrefix")){
+                    ext.resourcePrefix = null
+                }
                 applyMicroModuleBuild(it)
+                ext = project.extensions.findByName("ext")
+                if(ext != null && ext.properties.containsKey("resourcePrefix") && ext.resourcePrefix != null){
+                    microModuleResourcePrefixMap.put(it.name, ext.resourcePrefix)
+                }
             }
 
             handleMainMicroModule()
@@ -103,6 +113,7 @@ class MicroModulePlugin implements Plugin<Project> {
             project.tasks.preBuild.doFirst {
 
                 microModuleReferenceMap = new HashMap<>()
+                microModuleResourcePrefixMap = new HashMap<>()
                 setMicroModuleDir()
                 handleMainMicroModule()
                 generateR()

@@ -62,6 +62,7 @@ class MicroManifest {
             ResourceFile resourceFile = new ResourceFile()
             resourceFile.name = fileElement.getAttribute("name")
             resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
+            resourceFile.prefix = fileElement.getAttribute("prefix")
             resourceFile.path = fileElement.getAttribute("path")
             resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
             lastModifiedResourcesMap.put(resourceFile.path, resourceFile)
@@ -86,6 +87,7 @@ class MicroManifest {
             ResourceFile resourceFile = new ResourceFile()
             resourceFile.name = fileElement.getAttribute("name")
             resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
+            resourceFile.prefix = fileElement.getAttribute("prefix")
             resourceFile.path = fileElement.getAttribute("path")
             resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
             lastModifiedClassesMap.put(resourceFile.path, resourceFile)
@@ -109,6 +111,7 @@ class MicroManifest {
                 fileElement.setAttribute("path", resourceFile.path)
                 fileElement.setAttribute("lastModified", resourceFile.lastModified.toString())
                 fileElement.setAttribute("microModuleName", resourceFile.microModuleName)
+                fileElement.setAttribute("prefix", resourceFile.prefix)
                 resourcesElement.appendChild(fileElement)
             }
         }
@@ -124,6 +127,7 @@ class MicroManifest {
                 fileElement.setAttribute("path", resourceFile.path)
                 fileElement.setAttribute("lastModified", resourceFile.lastModified.toString())
                 fileElement.setAttribute("microModuleName", resourceFile.microModuleName)
+                fileElement.setAttribute("prefix", resourceFile.prefix)
                 classesElement.appendChild(fileElement)
             }
             microModuleXmlTemp.appendChild(classesElement)
