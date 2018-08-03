@@ -1,3 +1,7 @@
 dependencies {
 //    implementation microModule(':you-created-micro-module-name')
 }
+
+ext {
+    resourcePrefix="p_base_"
+}

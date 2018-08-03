@@ -17,13 +17,16 @@ class MicroModuleCodeCheck {
     ResourceMerged resourceMerged
 
     Map<String, List<String>> microModuleReferenceMap
+    Map<String, String> microModuleResourcePrefixMap
 
     String errorMessage = ""
     String lineSeparator = System.getProperty("line.separator")
 
-    public MicroModuleCodeCheck(Project project, Map<String, List<String>> microModuleReferenceMap) {
+    public MicroModuleCodeCheck(Project project, Map<String, List<String>> microModuleReferenceMap,
+                                Map<String, String> microModuleResourcePrefixMap) {
         this.project = project
         this.microModuleReferenceMap = microModuleReferenceMap
+        this.microModuleResourcePrefixMap = microModuleResourcePrefixMap
         projectPath = project.projectDir.absolutePath
         buildDir = new File(project.projectDir, "build")
 
@@ -53,6 +56,7 @@ class MicroModuleCodeCheck {
         }
         String packageName = getMainManifest().getPackageName()
         microManifest.packageName = packageName
+        microManifest.packageName = packageName
         saveMicroManifest()
     }
 
@@ -67,26 +71,49 @@ class MicroModuleCodeCheck {
             for (int j = 0; j < fileNodeList.getLength(); j++) {
                 Element fileElement = (Element) fileNodeList.item(j)
                 String filePath = fileElement.getAttribute("path")
-                if (filePath != null && filePath.endsWith(".xml")) {
-                    File file = project.file(filePath)
+                if (filePath != null) {
                     ResourceFile resourceFile = lastModifiedResourcesMap.get(filePath)
-                    def currentModified = file.lastModified()
-                    if (resourceFile == null || resourceFile.lastModified.longValue() < currentModified) {
-                        modifiedResourcesList.add(file)
-
-                        if (resourceFile == null) {
-                            resourceFile = new ResourceFile()
-                            resourceFile.name = file.name
-                            resourceFile.path = filePath
-                            resourceFile.microModuleName = getMicroModuleName(filePath)
-                            lastModifiedResourcesMap.put(filePath, resourceFile)
+                    File file = project.file(filePath)
+                    def microModuleName = getMicroModuleName(filePath)
+                    def prefix = microModuleResourcePrefixMap.get(microModuleName, null)
+                    if (resourceFile == null) {
+                        resourceFile = new ResourceFile()
+                        resourceFile.name = file.name
+                        resourceFile.path = filePath
+                        resourceFile.microModuleName = microModuleName
+                        resourceFile.lastModified = file.lastModified()
+                        lastModifiedResourcesMap.put(filePath, resourceFile)
+                    }
+                    resourceFile.prefix = prefix
+                    if(filePath.endsWith(".xml")){
+                        def currentModified = file.lastModified()
+                        if ((prefix != null && !resourceFile.name.startsWith(prefix))
+                                || resourceFile.lastModified.longValue() < currentModified) {
+                            modifiedResourcesList.add(file)
+                            resourceFile.lastModified = currentModified
                         }
-                        resourceFile.lastModified = currentModified
+                    }
+                    if(resourceFile.microModuleName != null && prefix != null){
+                        def resourcesPattern = /\${File.separator}(drawable|layout)[A-Za-z0-9-]*\${File.separator}(?!${prefix})./
+                        def matcher = (filePath =~ resourcesPattern)
+                        if (matcher.find()) {
+                            recordErrorMsg(file.absolutePath, file.name, prefix, 2)
+                        }
                     }
                 }
             }
         }
         return modifiedResourcesList
+    }
+
+    private String recordErrorMsg(String absolutePath, String name, String prefix, int lineNumber) {
+        def message = "${absolutePath}:${lineNumber}: ${lineSeparator}"
+        message += "Error: Resource named ${name} does not start with the project's resource" +
+                " prefix '${prefix}', pls rename to '${prefix}${name}'"
+        message += lineSeparator
+        if (!errorMessage.contains(message)) {
+            errorMessage += message
+        }
     }
 
     void handleModifiedResources(List<File> modifiedResourcesList) {
@@ -95,9 +122,30 @@ class MicroModuleCodeCheck {
         modifiedResourcesList.each {
             String text = it.text
             List<String> textLines = text.readLines()
-            def matcher = (text =~ resourcesPattern)
             def absolutePath = it.absolutePath
             def microModuleName = getMicroModuleName(absolutePath)
+            def prefix = microModuleResourcePrefixMap.get(microModuleName)
+            if(prefix != null && (it.name.endsWith("strings.xml") || it.name.endsWith("colors.xml"))){
+                textLines.each {
+                    if(it.contains("name")){
+                        def splits = it.split('"')
+                        if(splits.length >= 3 && !splits[1].startsWith(prefix)){
+                            List<Number> lines = textLines.findIndexValues { it.contains(splits[1]) }
+                            lines.each {
+                                def lineIndex = it.intValue()
+                                def lineContext = textLines.get(lineIndex).trim()
+                                if (lineContext.startsWith("<!--")) {
+                                    return
+                                }
+
+                                recordErrorMsg(absolutePath, splits[1], prefix, lineIndex + 1)
+                            }
+                        }
+                    }
+                }
+            }
+
+            def matcher = (text =~ resourcesPattern)
             while (matcher.find()) {
                 def find = matcher.group()
                 def name = find.substring(find.indexOf("/") + 1)
@@ -113,7 +161,7 @@ class MicroModuleCodeCheck {
                         }
 
                         def message = absolutePath + ':' + (lineIndex + 1)
-                        if(!errorMessage.contains(message)) {
+                        if (!errorMessage.contains(message)) {
                             message += lineSeparator
                             message += "- can't use [" + find + "] which from microModule '${from}'."
                             message += lineSeparator
@@ -183,6 +231,7 @@ class MicroModuleCodeCheck {
                         resourceFile.name = it.name
                         resourceFile.path = it.absolutePath
                         resourceFile.microModuleName = getMicroModuleName(it.absolutePath)
+                        resourceFile.prefix = microModuleResourcePrefixMap.get(resourceFile.microModuleName, null)
                         lastModifiedClassesMap.put(it.absolutePath, resourceFile)
                     }
                     resourceFile.lastModified = it.lastModified()
@@ -230,7 +279,7 @@ class MicroModuleCodeCheck {
                         }
 
                         def message = absolutePath + ':' + (lineIndex + 1)
-                        if(!errorMessage.contains(message)) {
+                        if (!errorMessage.contains(message)) {
                             message += lineSeparator
                             message += "- can't use [" + find + "] which from microModule '${from}'."
                             message += lineSeparator
