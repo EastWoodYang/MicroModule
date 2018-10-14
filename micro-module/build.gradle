@@ -5,8 +5,8 @@ group 'com.eastwood.tools.plugins'
 sourceCompatibility = 1.8
 
 repositories {
-    jcenter()
     google()
+    jcenter()
 }
 
 dependencies {

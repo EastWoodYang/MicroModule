@@ -3,7 +3,7 @@ package com.eastwood.tools.plugins.core
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 
-public class DefaultMicroModuleExtension implements MicroModuleExtension {
+class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     Project project
 
@@ -22,7 +22,7 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
         for (int i = 0; i < microModulePathsLen; i++) {
             MicroModule microModule = buildMicroModule(microModulePaths[i])
             if (microModule == null) {
-                throw new GradleException("can't find specified micro-module '${microModulePaths[i]}'.")
+                throw new GradleException("can't find specified MicroModule '${microModulePaths[i]}'.")
             }
             addMicroModule(microModule)
             if(onMicroModuleListener != null) {
@@ -35,7 +35,7 @@ public class DefaultMicroModuleExtension implements MicroModuleExtension {
     void mainMicroModule(String microModulePath) {
         mainMicroModule = buildMicroModule(microModulePath)
         if (mainMicroModule == null) {
-            throw new GradleException("can't find specified micro-module '${microModulePath}'.")
+            throw new GradleException("can't find specified MicroModule '${microModulePath}'.")
         }
         if(onMicroModuleListener != null) {
             onMicroModuleListener.addMicroModule(mainMicroModule, true)

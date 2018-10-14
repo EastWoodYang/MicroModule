@@ -22,6 +22,41 @@ android {
         }
     }
 
+    flavorDimensions "api", "mode"
+
+    productFlavors {
+
+        minApi24 {
+            dimension "api"
+            minSdkVersion 24
+            versionCode 30000 + android.defaultConfig.versionCode
+            versionNameSuffix "-minApi24"
+        }
+
+        minApi23 {
+            dimension "api"
+            minSdkVersion 23
+            versionCode 20000  + android.defaultConfig.versionCode
+            versionNameSuffix "-minApi23"
+        }
+
+        minApi21 {
+            dimension "api"
+            minSdkVersion 21
+            versionCode 10000  + android.defaultConfig.versionCode
+            versionNameSuffix "-minApi21"
+        }
+
+        demo {
+            dimension "mode"
+        }
+
+        full {
+            dimension "mode"
+        }
+
+    }
+
 }
 
 dependencies {

@@ -5,27 +5,25 @@ import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
 import com.android.manifmerger.XmlDocument
 import com.android.utils.ILogger
-import com.eastwood.tools.plugins.core.AndroidManifest
-import com.eastwood.tools.plugins.core.DefaultMicroModuleExtension
-import com.eastwood.tools.plugins.core.MicroModule
-import com.eastwood.tools.plugins.core.MicroModuleExtension
+import com.eastwood.tools.plugins.core.*
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 class MicroModulePlugin implements Plugin<Project> {
 
+    public final static String RPath = "/build/generated/source/r/"
+    public final static String mainManifestPath = "/src/main/AndroidManifest.xml"
+
     Project project
     DefaultMicroModuleExtension microModuleExtension
 
     MicroModule currentMicroModule
+    Map<String, List<String>> microModuleDependencyMap
 
-    public static Map<String, List<String>> microModuleReferenceMap
+    ProductFlavorInfo productFlavorInfo
 
     boolean originSourceSetCleared
-
-    public final static String RPath = "/build/generated/source/r/"
-    public final static String mainManifestPath = "/src/main/AndroidManifest.xml"
 
     def logger = new ILogger() {
         @Override
@@ -56,23 +54,27 @@ class MicroModulePlugin implements Plugin<Project> {
         microModuleExtension.onMicroModuleListener = new DefaultMicroModuleExtension.OnMicroModuleListener() {
             @Override
             void addMicroModule(MicroModule microModule, boolean mainMicroModule) {
+                if (productFlavorInfo == null) {
+                    productFlavorInfo = new ProductFlavorInfo(project)
+                }
+
                 if (!originSourceSetCleared) {
-                    clearMainMicroModule()
+                    clearOriginSourceSet()
                     if (!mainMicroModule) {
-                        includeMainMicroModule(microModuleExtension.mainMicroModule)
+                        includeMicroModule(microModuleExtension.mainMicroModule)
                     }
                     originSourceSetCleared = true
                 }
 
                 if (mainMicroModule) {
-                    clearMainMicroModule()
-                    includeMainMicroModule(microModuleExtension.mainMicroModule)
+                    clearOriginSourceSet()
+                    includeMicroModule(microModuleExtension.mainMicroModule)
                     microModuleExtension.includeMicroModules.each {
                         if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
-                        includeMainMicroModule(it)
+                        includeMicroModule(it)
                     }
                 }
-                includeMainMicroModule(microModule)
+                includeMicroModule(microModule)
             }
         }
 
@@ -82,29 +84,36 @@ class MicroModulePlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate {
-            microModuleReferenceMap = new HashMap<>()
+            microModuleDependencyMap = new HashMap<>()
 
             if (!originSourceSetCleared) {
-                clearMainMicroModule()
-                includeMainMicroModule(microModuleExtension.mainMicroModule)
                 originSourceSetCleared = true
+                clearOriginSourceSet()
+                includeMicroModule(microModuleExtension.mainMicroModule)
             }
 
-            // apply
+            // apply MicroModule build.gradle
             applyMicroModuleBuild(microModuleExtension.mainMicroModule)
             List<MicroModule> includeMicroModules = microModuleExtension.includeMicroModules.clone()
             includeMicroModules.each {
-                if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+                if (it.name == microModuleExtension.mainMicroModule.name) return
                 applyMicroModuleBuild(it)
             }
 
-            handleMainMicroModule()
+            // Check MicroModule dependency
+            checkMicroModuleDependency(microModuleExtension.mainMicroModule)
+            microModuleExtension.includeMicroModules.each {
+                if (it.name == microModuleExtension.mainMicroModule.name) return
+                checkMicroModuleDependency(it)
+            }
+
+            generateAndroidManifest()
 
             project.tasks.preBuild.doFirst {
-
-                microModuleReferenceMap = new HashMap<>()
                 setMicroModuleDir()
-                handleMainMicroModule()
+
+                generateAndroidManifest()
+
                 generateR()
             }
         }
@@ -113,23 +122,11 @@ class MicroModulePlugin implements Plugin<Project> {
     def setMicroModuleDir() {
         clearModuleSourceSet("main")
         // include
-        includeMainMicroModule(microModuleExtension.mainMicroModule)
+        includeMicroModule(microModuleExtension.mainMicroModule)
         microModuleExtension.includeMicroModules.each {
-            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
-            includeMainMicroModule(it)
+            if (it.name == microModuleExtension.mainMicroModule.name) return
+            includeMicroModule(it)
         }
-    }
-
-    def handleMainMicroModule() {
-
-        // check
-        checkMicroModuleReference(microModuleExtension.mainMicroModule)
-        microModuleExtension.includeMicroModules.each {
-            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
-            checkMicroModuleReference(it)
-        }
-
-        mergeMainAndroidManifest()
     }
 
     def checkMainMicroModule() {
@@ -138,22 +135,62 @@ class MicroModulePlugin implements Plugin<Project> {
             def name = ":main"
             def microModuleDir = new File(project.projectDir, "/main")
             if (!microModuleDir.exists()) {
-                throw new GradleException("can't find specified micro-module [${name}] under path [${microModuleDir.absolutePath}].")
+                throw new GradleException("can't find specified MicroModule '${name}' under path [${microModuleDir.absolutePath}].")
             }
             microModuleExtension.mainMicroModule.name = name
             microModuleExtension.mainMicroModule.microModuleDir = microModuleDir
         }
     }
 
-    def mergeMainAndroidManifest() {
-        File mainManifestFile = new File(microModuleExtension.mainMicroModule.microModuleDir, mainManifestPath)
+    def generateAndroidManifest() {
+        mergeAndroidManifest("main")
+
+        // buildTypes
+        productFlavorInfo.buildTypes.each {
+            mergeAndroidManifest(it.name)
+        }
+
+        if (!productFlavorInfo.singleDimension) {
+            productFlavorInfo.productFlavors.each {
+                mergeAndroidManifest(it.name)
+            }
+        }
+
+        productFlavorInfo.combinedProductFlavors.each {
+            mergeAndroidManifest(it)
+
+            def productFlavor = it
+            productFlavorInfo.buildTypes.each {
+                mergeAndroidManifest(productFlavor + upperCase(it.name))
+            }
+        }
+
+        // androidTest
+        def testType = 'androidTest'
+        mergeAndroidManifest(testType)
+        mergeAndroidManifest(testType + "Debug")
+        if (!productFlavorInfo.singleDimension) {
+            productFlavorInfo.productFlavors.each {
+                mergeAndroidManifest(testType + upperCase(it.name))
+            }
+        }
+
+        productFlavorInfo.combinedProductFlavors.each {
+            mergeAndroidManifest(testType + upperCase(it))
+            mergeAndroidManifest(testType + upperCase(it) + "Debug")
+        }
+    }
+
+    def mergeAndroidManifest(String variantName) {
+        File mainManifestFile = new File(microModuleExtension.mainMicroModule.microModuleDir, "/src/${variantName}/AndroidManifest.xml")
+        if (!mainManifestFile.exists()) return
         ManifestMerger2.MergeType mergeType = ManifestMerger2.MergeType.APPLICATION
         XmlDocument.Type documentType = XmlDocument.Type.MAIN
         ManifestMerger2.Invoker invoker = new ManifestMerger2.Invoker(mainManifestFile, logger, mergeType, documentType)
         invoker.withFeatures(ManifestMerger2.Invoker.Feature.NO_PLACEHOLDER_REPLACEMENT)
         microModuleExtension.includeMicroModules.each {
             if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
-            def microManifestFile = new File(it.microModuleDir, mainManifestPath)
+            def microManifestFile = new File(it.microModuleDir, "/src/${variantName}/AndroidManifest.xml")
             if (microManifestFile.exists()) {
                 invoker.addLibraryManifest(microManifestFile)
             }
@@ -166,7 +203,7 @@ class MicroModulePlugin implements Plugin<Project> {
         def moduleAndroidManifest = mergingReport.getMergedDocument(MergingReport.MergedManifestKind.MERGED)
         moduleAndroidManifest = new String(moduleAndroidManifest.getBytes("UTF-8"))
 
-        def saveDir = new File(project.projectDir, "build/microModule/main")
+        def saveDir = new File(project.projectDir, "build/microModule/${variantName}")
         saveDir.mkdirs()
         def AndroidManifestFile = new File(saveDir, "AndroidManifest.xml")
         AndroidManifestFile.createNewFile()
@@ -174,25 +211,135 @@ class MicroModulePlugin implements Plugin<Project> {
 
         def extensionContainer = project.getExtensions()
         BaseExtension android = extensionContainer.getByName('android')
-        android.sourceSets.main.manifest.srcFile project.projectDir.absolutePath + "/build/microModule/main/AndroidManifest.xml"
+        def obj = android.sourceSets.findByName(variantName)
+        if (obj == null) {
+            return
+        }
+        obj.manifest.srcFile project.projectDir.absolutePath + "/build/microModule/${variantName}/AndroidManifest.xml"
     }
 
-    def includeMainMicroModule(MicroModule microModule) {
-        includeMicroModule(microModule, "main")
-        includeMicroModule(microModule, "androidTest")
-        includeMicroModule(microModule, "test")
+    def includeMicroModule(MicroModule microModule) {
+        addModuleSourceSet(microModule, "main")
+
+        // buildTypes
+        productFlavorInfo.buildTypes.each {
+            addModuleSourceSet(microModule, it.name)
+        }
+
+        if (!productFlavorInfo.singleDimension) {
+            productFlavorInfo.productFlavors.each {
+                addModuleSourceSet(microModule, it.name)
+            }
+        }
+
+        productFlavorInfo.combinedProductFlavors.each {
+            addModuleSourceSet(microModule, it)
+            def flavorName = it
+            productFlavorInfo.buildTypes.each {
+                addModuleSourceSet(microModule, flavorName + upperCase(it.name))
+            }
+        }
+
+        def testTypes = ['androidTest', 'test']
+        testTypes.each {
+            def testType = it
+            addModuleSourceSet(microModule, testType)
+
+            if (testType == "test") {
+                productFlavorInfo.buildTypes.each {
+                    addModuleSourceSet(microModule, testType + upperCase(it.name))
+                }
+            } else {
+                addModuleSourceSet(microModule, testType + "Debug")
+            }
+
+            if (!productFlavorInfo.singleDimension) {
+                productFlavorInfo.productFlavors.each {
+                    addModuleSourceSet(microModule, testType + upperCase(it.name))
+                }
+            }
+
+
+            productFlavorInfo.combinedProductFlavors.each {
+                def productFlavorName = testType + upperCase(it)
+                addModuleSourceSet(microModule, productFlavorName)
+
+                if (testType == "test") {
+                    productFlavorInfo.buildTypes.each {
+                        addModuleSourceSet(microModule, productFlavorName + upperCase(it.name))
+                    }
+                } else {
+                    addModuleSourceSet(microModule, productFlavorName + "Debug")
+                }
+            }
+        }
     }
 
-    def clearMainMicroModule() {
+    def clearOriginSourceSet() {
         clearModuleSourceSet("main")
-        clearModuleSourceSet("androidTest")
-        clearModuleSourceSet("test")
+
+        // buildTypes
+        productFlavorInfo.buildTypes.each {
+            clearModuleSourceSet(it.name)
+        }
+
+        if (!productFlavorInfo.singleDimension) {
+            productFlavorInfo.productFlavors.each {
+                clearModuleSourceSet(it.name)
+            }
+        }
+
+        productFlavorInfo.combinedProductFlavors.each {
+            clearModuleSourceSet(it)
+            def flavorName = it
+            productFlavorInfo.buildTypes.each {
+                clearModuleSourceSet(flavorName + upperCase(it.name))
+            }
+        }
+
+        def testTypes = ['androidTest', 'test']
+        testTypes.each {
+            def testType = it
+            clearModuleSourceSet(testType)
+
+            if (testType == "test") {
+                productFlavorInfo.buildTypes.each {
+                    clearModuleSourceSet(testType + upperCase(it.name))
+                }
+            } else {
+                clearModuleSourceSet(testType + "Debug")
+            }
+
+            if (!productFlavorInfo.singleDimension) {
+                productFlavorInfo.productFlavors.each {
+                    clearModuleSourceSet(testType + upperCase(it.name))
+                }
+            }
+
+
+            productFlavorInfo.combinedProductFlavors.each {
+                def productFlavorName = testType + upperCase(it)
+                clearModuleSourceSet(productFlavorName)
+
+                if (testType == "test") {
+                    productFlavorInfo.buildTypes.each {
+                        clearModuleSourceSet(productFlavorName + upperCase(it.name))
+                    }
+                } else {
+                    clearModuleSourceSet(productFlavorName + "Debug")
+                }
+            }
+        }
     }
 
-    def includeMicroModule(MicroModule microModule, def type) {
+    def addModuleSourceSet(MicroModule microModule, def type) {
         def absolutePath = microModule.microModuleDir.absolutePath
         BaseExtension android = project.extensions.getByName('android')
-        def obj = android.sourceSets.getByName(type)
+        def obj = android.sourceSets.findByName(type)
+        if (obj == null) {
+            obj = android.sourceSets.create(type)
+        }
+
         obj.java.srcDir(absolutePath + "/src/${type}/java")
         obj.res.srcDir(absolutePath + "/src/${type}/res")
         obj.jni.srcDir(absolutePath + "/src/${type}/jni")
@@ -207,7 +354,10 @@ class MicroModulePlugin implements Plugin<Project> {
     def clearModuleSourceSet(def type) {
         def srcDirs = []
         BaseExtension android = project.extensions.getByName('android')
-        def obj = android.sourceSets.getByName(type)
+        def obj = android.sourceSets.findByName(type)
+        if (obj == null) {
+            return
+        }
         obj.java.srcDirs = srcDirs
         obj.res.srcDirs = srcDirs
         obj.jni.srcDirs = srcDirs
@@ -219,46 +369,56 @@ class MicroModulePlugin implements Plugin<Project> {
         obj.renderscript.srcDirs = srcDirs
     }
 
-    def checkMicroModuleReference(MicroModule microModule) {
-        List<String> referenceList = microModuleReferenceMap.get(microModule.name)
-        if (referenceList == null) return
+    def checkMicroModuleDependency(MicroModule microModule) {
+        List<String> dependencyList = microModuleDependencyMap.get(microModule.name)
+        if (dependencyList == null) return
 
-        for (String path : referenceList) {
-            isReferenceMicroModuleInclude(microModule, path)
+        for (String path : dependencyList) {
+            checkMicroModuleDependency(microModule, path)
         }
     }
 
-    def isReferenceMicroModuleInclude(MicroModule microModule, String path) {
-        MicroModule referenceMicroModule = microModuleExtension.buildMicroModule(path)
-        if (referenceMicroModule == null) {
-            throw new GradleException("can't find specified microModule '${path}', which is referenced by microModle${microModule.name}")
+    def checkMicroModuleDependency(MicroModule microModule, String path) {
+        MicroModule dependencyMicroModule = microModuleExtension.buildMicroModule(path)
+        if (dependencyMicroModule == null) {
+            throw new GradleException("can't find specified MicroModule '${path}', which is dependent by MicroModle '${microModule.name}'")
         }
 
         boolean include = false
         microModuleExtension.includeMicroModules.each {
-            if (it.name == referenceMicroModule.name) {
+            if (it.name == dependencyMicroModule.name) {
                 include = true
             }
         }
-        if (microModuleExtension.mainMicroModule.name == referenceMicroModule.name) {
+        if (microModuleExtension.mainMicroModule.name == dependencyMicroModule.name) {
             include = true
         }
+
         if (!include) {
-            throw new GradleException("microModle${referenceMicroModule.name} is referenced by microModle${microModule.name}, but its not included.")
+            throw new GradleException("MicroModle '${microModule.name}' dependency MicroModle '${dependencyMicroModule.name}', but its not included.")
         }
     }
 
     def generateR() {
         def microManifestFile = new File(microModuleExtension.mainMicroModule.microModuleDir, mainManifestPath)
         def mainPackageName = getPackageName(microManifestFile)
-        BaseExtension extension = (BaseExtension) project.extensions.getByName("android")
-        extension.buildTypes.each {
+        productFlavorInfo.buildTypes.each {
             def buildType = it.name
-            if (extension.productFlavors.size() == 0) {
+            if (productFlavorInfo.productFlavors.size() == 0) {
                 generateRByProductFlavorBuildType(mainPackageName, buildType, null)
             } else {
-                extension.productFlavors.each {
-                    generateRByProductFlavorBuildType(mainPackageName, buildType, it.name)
+                if (!productFlavorInfo.singleDimension) {
+                    productFlavorInfo.productFlavors.each {
+                        generateRByProductFlavorBuildType(mainPackageName, buildType, it.name)
+                    }
+                }
+
+                productFlavorInfo.combinedProductFlavors.each {
+                    generateRByProductFlavorBuildType(mainPackageName, buildType, it)
+                    def combinedProductFlavor = it
+                    productFlavorInfo.buildTypes.each {
+                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + upperCase(it.name))
+                    }
                 }
             }
         }
@@ -342,16 +502,16 @@ class MicroModulePlugin implements Plugin<Project> {
         }
         MicroModule microModule = microModuleExtension.buildMicroModule(path)
         if (microModule == null) {
-            throw new GradleException("can't find specified microModule '${path}', which is referenced by microModle${currentMicroModule.name}")
+            throw new GradleException("can't find specified MicroModule '${path}', which is dependent by MicroModle '${currentMicroModule.name}'")
         }
-        List<String> referenceList = microModuleReferenceMap.get(currentMicroModule.name)
-        if (referenceList == null) {
-            referenceList = new ArrayList<>()
-            referenceList.add(microModule.name)
-            microModuleReferenceMap.put(currentMicroModule.name, referenceList)
+        List<String> dependencyList = microModuleDependencyMap.get(currentMicroModule.name)
+        if (dependencyList == null) {
+            dependencyList = new ArrayList<>()
+            dependencyList.add(microModule.name)
+            microModuleDependencyMap.put(currentMicroModule.name, dependencyList)
         } else {
-            if (!referenceList.contains(microModule.name)) {
-                referenceList.add(microModule.name)
+            if (!dependencyList.contains(microModule.name)) {
+                dependencyList.add(microModule.name)
             }
         }
     }

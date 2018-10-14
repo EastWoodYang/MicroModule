@@ -3,19 +3,27 @@ package com.eastwood.tools.plugins
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestedExtension
 import com.eastwood.tools.plugins.core.MicroModuleCodeCheck
+import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 class MicroModuleCodeCheckPlugin implements Plugin<Project> {
 
     Project project
+
     Map<String, List<String>> microModuleReferenceMap
+    ProductFlavorInfo productFlavorInfo
 
     void apply(Project project) {
         this.project = project
 
         project.afterEvaluate {
-            microModuleReferenceMap = MicroModulePlugin.microModuleReferenceMap
+            MicroModulePlugin microModulePlugin = project.getPlugins().findPlugin("micro-module")
+            if (microModulePlugin == null) {
+
+            }
+            productFlavorInfo = microModulePlugin.productFlavorInfo
+            microModuleReferenceMap = microModulePlugin.microModuleDependencyMap
 
             def taskNamePrefix
             TestedExtension extension = (TestedExtension) project.extensions.getByName("android")
@@ -26,18 +34,24 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
             }
             extension.buildTypes.each {
                 def buildType = it.name
-                if (extension.productFlavors.size() == 0) {
+                if (productFlavorInfo.combinedProductFlavors.size() == 0) {
                     check(taskNamePrefix, buildType, null)
                 } else {
-                    extension.productFlavors.each {
-                        check(taskNamePrefix, buildType, it.name)
+                    productFlavorInfo.combinedProductFlavors.each {
+                        List<String> combinedProductFlavors = new ArrayList<>()
+                        combinedProductFlavors.add('main')
+                        combinedProductFlavors.addAll(productFlavorInfo.combinedProductFlavorsMap.get(it))
+                        combinedProductFlavors.add(buildType)
+                        combinedProductFlavors.add(it)
+                        combinedProductFlavors.add(it + upperCase(buildType))
+                        check(taskNamePrefix, buildType, it, combinedProductFlavors)
                     }
                 }
             }
         }
     }
 
-    def check(taskPrefix, buildType, productFlavor) {
+    def check(taskPrefix, buildType, productFlavor, combinedProductFlavors) {
         MicroModuleCodeCheck microModuleCodeCheck
 
         def buildTypeFirstUp = upperCase(buildType)
@@ -48,7 +62,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         if (packageResourcesTask != null) {
             microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
             packageResourcesTask.doLast {
-                microModuleCodeCheck.checkResources(mergeResourcesTaskName)
+                microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
             }
         }
 
@@ -60,7 +74,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
                     microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
                 }
                 def productFlavorBuildType = productFlavor != null ? (productFlavor + File.separator + buildType) : buildType
-                microModuleCodeCheck.checkClasses(productFlavorBuildType, mergeResourcesTaskName)
+                microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors, productFlavorBuildType)
             }
         }
     }

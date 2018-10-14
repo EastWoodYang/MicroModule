@@ -13,7 +13,8 @@ class ResourceMerged {
 
     String projectPath
     File resourcesMergerFile
-    NodeList resourcesNodeList
+
+    List<NodeList> resourceNodeLists
     Map<String, String> resourcesMap
 
 
@@ -24,9 +25,12 @@ class ResourceMerged {
         return resourcesMergerFile.exists()
     }
 
-    NodeList getResourcesNodeList() {
-        if (resourcesNodeList != null) return resourcesNodeList
-
+    List<NodeList> getResourcesNodeList(List<String> combinedProductFlavors) {
+        if (resourceNodeLists == null) {
+            resourceNodeLists = new ArrayList<>()
+        } else {
+            return resourceNodeLists
+        }
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance()
         DocumentBuilder builder = factory.newDocumentBuilder()
 
@@ -38,58 +42,60 @@ class ResourceMerged {
         for (int i = 0; i < dataSetNodeList.getLength(); i++) {
             Element dataSetElement = (Element) dataSetNodeList.item(i)
             def config = dataSetElement.getAttribute("config")
-            if (config == "main") {
-                return dataSetElement.getElementsByTagName("source")
+            if (combinedProductFlavors.contains(config)) {
+                resourceNodeLists.add(dataSetElement.getElementsByTagName("source"))
             }
         }
-        return null
+        return resourceNodeLists
     }
 
     Map<String, String> getResourcesMap() {
         if (resourcesMap != null) return resourcesMap
 
-        NodeList resourcesNodeList = getResourcesNodeList()
         Map<String, String> resourcesMap = new HashMap<String, String>()
-        if (resourcesNodeList == null || resourcesNodeList.length == 0)
+        if (resourceNodeLists == null || resourceNodeLists.length == 0)
             return resourcesMap
 
-        def resourcesNodeLength = resourcesNodeList.getLength()
-        for (int i = 0; i < resourcesNodeLength; i++) {
-            Element resourcesElement = (Element) resourcesNodeList.item(i)
-            String path = resourcesElement.getAttribute("path")
-            String moduleName = path.replace(projectPath, "")
-            if (moduleName.startsWith(File.separator + "build")) continue
+        resourceNodeLists.each {
+            int length = it.length
+            for (int i = 0; i < length; i++) {
+                Element resourcesElement = (Element) it.item(i)
+                String path = resourcesElement.getAttribute("path")
+                String moduleName = path.replace(projectPath, "")
+                if (moduleName.startsWith(File.separator + "build")) continue
 
-            moduleName = moduleName.substring(0, moduleName.indexOf(SRC))
-            if (File.separator == "\\") {
-                moduleName = moduleName.replaceAll("\\\\", ":")
-            } else {
-                moduleName = moduleName.replaceAll("/", ":")
-            }
-            NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
-            def fileNodeLength = fileNodeList.getLength()
-            if (fileNodeLength <= 0) {
-                continue
-            }
-            for (int j = 0; j < fileNodeLength; j++) {
-                Element fileElement = (Element) fileNodeList.item(j)
-                String name = fileElement.getAttribute("name")
-                if (name == "") {
-                    NodeList nodeList = fileElement.getChildNodes()
-                    def nodeLength = nodeList.getLength()
-                    if (nodeLength <= 0) {
-                        continue
-                    }
-                    for (int k = 0; k < nodeLength; k++) {
-                        Element childElement = (Element) nodeList.item(k)
-                        name = childElement.getAttribute("name")
+                moduleName = moduleName.substring(0, moduleName.indexOf(SRC))
+                if (File.separator == "\\") {
+                    moduleName = moduleName.replaceAll("\\\\", ":")
+                } else {
+                    moduleName = moduleName.replaceAll("/", ":")
+                }
+                NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
+                def fileNodeLength = fileNodeList.getLength()
+                if (fileNodeLength <= 0) {
+                    continue
+                }
+                for (int j = 0; j < fileNodeLength; j++) {
+                    Element fileElement = (Element) fileNodeList.item(j)
+                    String name = fileElement.getAttribute("name")
+                    if (name == "") {
+                        NodeList nodeList = fileElement.getChildNodes()
+                        def nodeLength = nodeList.getLength()
+                        if (nodeLength <= 0) {
+                            continue
+                        }
+                        for (int k = 0; k < nodeLength; k++) {
+                            Element childElement = (Element) nodeList.item(k)
+                            name = childElement.getAttribute("name")
+                            resourcesMap.put(name, moduleName)
+                        }
+                    } else {
                         resourcesMap.put(name, moduleName)
                     }
-                } else {
-                    resourcesMap.put(name, moduleName)
                 }
             }
         }
+
 
         return resourcesMap
     }

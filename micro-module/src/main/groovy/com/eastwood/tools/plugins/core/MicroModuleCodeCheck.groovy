@@ -33,8 +33,7 @@ class MicroModuleCodeCheck {
     }
 
     @TaskAction
-    void checkResources(String mergeTaskName) {
-        println ":${project.name}:codeCheckResources"
+    void checkResources(String mergeTaskName, List<String> combinedProductFlavors) {
         resourceMerged = new ResourceMerged()
         resourceMerged.load(project.projectDir, mergeTaskName)
         if (!resourceMerged.resourcesMergerFile.exists()) {
@@ -42,8 +41,8 @@ class MicroModuleCodeCheck {
             return
         }
 
-        NodeList resourcesNodeList = resourceMerged.getResourcesNodeList()
-        List<File> modifiedResourcesList = getModifiedResourcesList(resourcesNodeList)
+        List<NodeList> resourceNodeLists = resourceMerged.getResourcesNodeList(combinedProductFlavors)
+        List<File> modifiedResourcesList = getModifiedResourcesList(resourceNodeLists)
         if (modifiedResourcesList.size() == 0) {
             return
         }
@@ -56,36 +55,39 @@ class MicroModuleCodeCheck {
         saveMicroManifest()
     }
 
-    List<File> getModifiedResourcesList(NodeList resourcesNodeList) {
+    List<File> getModifiedResourcesList(List<NodeList> resourcesNodeList) {
         Map<String, ResourceFile> lastModifiedResourcesMap = microManifest.getResourcesMap()
         List<File> modifiedResourcesList = new ArrayList<>()
         if (resourcesNodeList == null || resourcesNodeList.length == 0) return modifiedResourcesList
 
-        for (int i = 0; i < resourcesNodeList.getLength(); i++) {
-            Element resourcesElement = (Element) resourcesNodeList.item(i)
-            NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
-            for (int j = 0; j < fileNodeList.getLength(); j++) {
-                Element fileElement = (Element) fileNodeList.item(j)
-                String filePath = fileElement.getAttribute("path")
-                if (filePath != null && filePath.endsWith(".xml")) {
-                    File file = project.file(filePath)
-                    ResourceFile resourceFile = lastModifiedResourcesMap.get(filePath)
-                    def currentModified = file.lastModified()
-                    if (resourceFile == null || resourceFile.lastModified.longValue() < currentModified) {
-                        modifiedResourcesList.add(file)
+        resourcesNodeList.each {
+            for (int i = 0; i < it.getLength(); i++) {
+                Element resourcesElement = (Element) it.item(i)
+                NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
+                for (int j = 0; j < fileNodeList.getLength(); j++) {
+                    Element fileElement = (Element) fileNodeList.item(j)
+                    String filePath = fileElement.getAttribute("path")
+                    if (filePath != null && filePath.endsWith(".xml")) {
+                        File file = project.file(filePath)
+                        ResourceFile resourceFile = lastModifiedResourcesMap.get(filePath)
+                        def currentModified = file.lastModified()
+                        if (resourceFile == null || resourceFile.lastModified.longValue() < currentModified) {
+                            modifiedResourcesList.add(file)
 
-                        if (resourceFile == null) {
-                            resourceFile = new ResourceFile()
-                            resourceFile.name = file.name
-                            resourceFile.path = filePath
-                            resourceFile.microModuleName = getMicroModuleName(filePath)
-                            lastModifiedResourcesMap.put(filePath, resourceFile)
+                            if (resourceFile == null) {
+                                resourceFile = new ResourceFile()
+                                resourceFile.name = file.name
+                                resourceFile.path = filePath
+                                resourceFile.microModuleName = getMicroModuleName(filePath)
+                                lastModifiedResourcesMap.put(filePath, resourceFile)
+                            }
+                            resourceFile.lastModified = currentModified
                         }
-                        resourceFile.lastModified = currentModified
                     }
                 }
             }
         }
+
         return modifiedResourcesList
     }
 
@@ -102,7 +104,6 @@ class MicroModuleCodeCheck {
                 def find = matcher.group()
                 def name = find.substring(find.indexOf("/") + 1)
                 def from = resourcesMap.get(name)
-
                 if (from != null && microModuleName != from && !isReference(microModuleName, from)) {
                     List<Number> lines = textLines.findIndexValues { it.contains(find) }
                     lines.each {
@@ -115,7 +116,7 @@ class MicroModuleCodeCheck {
                         def message = absolutePath + ':' + (lineIndex + 1)
                         if(!errorMessage.contains(message)) {
                             message += lineSeparator
-                            message += "- can't use [" + find + "] which from microModule '${from}'."
+                            message += "- can't use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator
                             errorMessage += message
                         }
@@ -126,15 +127,14 @@ class MicroModuleCodeCheck {
     }
 
     @TaskAction
-    void checkClasses(String productFlavorBuildType, mergeTaskName) {
-        println ":${project.name}:codeCheckClasses"
+    void checkClasses(String mergeTaskName, List<String> combinedProductFlavors, String productFlavorBuildType) {
         File classesMergerFile = new File(buildDir, "intermediates/classes/${productFlavorBuildType}/" + microManifest.packageName.replace(".", "/"))
         if (!classesMergerFile.exists()) {
             println "[micro-module-code-check] - classesMergerFile is not exists!"
             return
         }
 
-        List<File> modifiedClassesList = getModifiedClassesList()
+        List<File> modifiedClassesList = getModifiedClassesList(combinedProductFlavors)
         if (modifiedClassesList.size() == 0) {
             return
         }
@@ -155,15 +155,21 @@ class MicroModuleCodeCheck {
         saveMicroManifest()
     }
 
-    List<File> getModifiedClassesList() {
+    List<File> getModifiedClassesList(List<String> combinedProductFlavors) {
         Map<String, ResourceFile> lastModifiedClassesMap = microManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
-        File javaDir = new File(microModuleExtension.mainMicroModule.microModuleDir, "/src/main/java")
-        getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+        combinedProductFlavors.each {
+            File javaDir = new File(microModuleExtension.mainMicroModule.microModuleDir, "/src/${it}/java")
+            getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+        }
+
 
         microModuleExtension.includeMicroModules.each {
-            javaDir = new File(it.microModuleDir, "/src/main/java")
-            getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+            MicroModule microModule = it
+            combinedProductFlavors.each {
+                File javaDir = new File(microModule.microModuleDir, "/src/${it}/java")
+                getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+            }
         }
         return modifiedClassesList
     }
@@ -232,7 +238,7 @@ class MicroModuleCodeCheck {
                         def message = absolutePath + ':' + (lineIndex + 1)
                         if(!errorMessage.contains(message)) {
                             message += lineSeparator
-                            message += "- can't use [" + find + "] which from microModule '${from}'."
+                            message += "- can't use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator
                             errorMessage += message
                         }
@@ -278,27 +284,6 @@ class MicroModuleCodeCheck {
             }
         }
         return false
-    }
-
-    String getMicroModulePackageName(File directory, String packageName) {
-        if (directory == null) return packageName
-
-        File[] files = directory.listFiles()
-        if (files == null || files.length == 0) {
-            return packageName + "." + directory.name
-        } else if (files.length == 1) {
-            if (files[0].isFile()) {
-                return packageName + "." + directory.name
-            } else {
-                return getMicroModulePackageName(files[0], packageName + "." + directory.name)
-            }
-        } else {
-            for (int i = 0; i < files.size(); i++) {
-                if (files[i].isFile()) {
-                    return packageName + "." + directory.name
-                }
-            }
-        }
     }
 
     private AndroidManifest getMainManifest() {

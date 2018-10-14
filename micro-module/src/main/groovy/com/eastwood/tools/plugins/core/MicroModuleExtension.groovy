@@ -1,6 +1,6 @@
 package com.eastwood.tools.plugins.core
 
-public interface MicroModuleExtension {
+interface MicroModuleExtension {
 
     void include(String... microModulePaths)
 
