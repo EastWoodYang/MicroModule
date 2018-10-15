@@ -4,6 +4,7 @@ import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestedExtension
 import com.eastwood.tools.plugins.core.MicroModuleCodeCheck
 import com.eastwood.tools.plugins.core.ProductFlavorInfo
+import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -35,7 +36,10 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
             extension.buildTypes.each {
                 def buildType = it.name
                 if (productFlavorInfo.combinedProductFlavors.size() == 0) {
-                    check(taskNamePrefix, buildType, null)
+                    List<String> combinedProductFlavors = new ArrayList<>()
+                    combinedProductFlavors.add('main')
+                    combinedProductFlavors.add(buildType)
+                    check(taskNamePrefix, buildType, null, combinedProductFlavors)
                 } else {
                     productFlavorInfo.combinedProductFlavors.each {
                         List<String> combinedProductFlavors = new ArrayList<>()
@@ -43,7 +47,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
                         combinedProductFlavors.addAll(productFlavorInfo.combinedProductFlavorsMap.get(it))
                         combinedProductFlavors.add(buildType)
                         combinedProductFlavors.add(it)
-                        combinedProductFlavors.add(it + upperCase(buildType))
+                        combinedProductFlavors.add(it + Utils.upperCase(buildType))
                         check(taskNamePrefix, buildType, it, combinedProductFlavors)
                     }
                 }
@@ -54,13 +58,13 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
     def check(taskPrefix, buildType, productFlavor, combinedProductFlavors) {
         MicroModuleCodeCheck microModuleCodeCheck
 
-        def buildTypeFirstUp = upperCase(buildType)
-        def productFlavorFirstUp = productFlavor != null ? upperCase(productFlavor) : ""
+        def buildTypeFirstUp = Utils.upperCase(buildType)
+        def productFlavorFirstUp = productFlavor != null ? Utils.upperCase(productFlavor) : ""
 
         def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
         def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
         if (packageResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, buildType, productFlavor, microModuleReferenceMap)
             packageResourcesTask.doLast {
                 microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
             }
@@ -71,22 +75,12 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
                 if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleReferenceMap)
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, buildType, productFlavor, microModuleReferenceMap)
                 }
                 def productFlavorBuildType = productFlavor != null ? (productFlavor + File.separator + buildType) : buildType
                 microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors, productFlavorBuildType)
             }
         }
-    }
-
-    def upperCase(String str) {
-        char[] ch = str.toCharArray()
-        if (ch.size() == 0) return str
-
-        if (ch[0] >= 'a' && ch[0] <= 'z') {
-            ch[0] -= 32
-        }
-        return String.valueOf(ch)
     }
 
 }

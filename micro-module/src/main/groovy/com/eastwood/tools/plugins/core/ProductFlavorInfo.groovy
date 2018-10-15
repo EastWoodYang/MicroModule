@@ -66,8 +66,8 @@ class ProductFlavorInfo {
             items.add(item)
             String combined = item
             for (int j = 1; j < n; j++) {
-                item = upperCase(inputList.get(j).get(combination.get(j)))
-                combined += item
+                item = inputList.get(j).get(combination.get(j))
+                combined += Utils.upperCase(item)
                 items.add(item)
             }
             combinedProductFlavors.add(combined)
@@ -90,14 +90,6 @@ class ProductFlavorInfo {
                 }
             }
         }
-    }
-
-    def upperCase(String str) {
-        char[] ch = str.toCharArray()
-        if (ch[0] >= 'a' && ch[0] <= 'z') {
-            ch[0] -= 32
-        }
-        return String.valueOf(ch)
     }
 
 }

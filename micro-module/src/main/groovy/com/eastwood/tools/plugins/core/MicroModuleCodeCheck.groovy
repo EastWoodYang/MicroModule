@@ -13,6 +13,9 @@ class MicroModuleCodeCheck {
     File buildDir
     DefaultMicroModuleExtension microModuleExtension
 
+    String buildType
+    String productFlavor
+
     MicroManifest microManifest
     ResourceMerged resourceMerged
 
@@ -21,8 +24,10 @@ class MicroModuleCodeCheck {
     String errorMessage = ""
     String lineSeparator = System.getProperty("line.separator")
 
-    public MicroModuleCodeCheck(Project project, Map<String, List<String>> microModuleReferenceMap) {
+    public MicroModuleCodeCheck(Project project, String buildType, String productFlavor, Map<String, List<String>> microModuleReferenceMap) {
         this.project = project
+        this.buildType = buildType
+        this.productFlavor = productFlavor
         this.microModuleReferenceMap = microModuleReferenceMap
         projectPath = project.projectDir.absolutePath
         buildDir = new File(project.projectDir, "build")
@@ -50,7 +55,9 @@ class MicroModuleCodeCheck {
         if (errorMessage != "") {
             throw new GradleScriptException(errorMessage, null)
         }
-        String packageName = getMainManifest().getPackageName()
+
+        def manifest = new File(microModuleExtension.mainMicroModule.microModuleDir, "src/main/AndroidManifest.xml")
+        String packageName = Utils.getAndroidManifestPackageName(manifest)
         microManifest.packageName = packageName
         saveMicroManifest()
     }
@@ -158,12 +165,6 @@ class MicroModuleCodeCheck {
     List<File> getModifiedClassesList(List<String> combinedProductFlavors) {
         Map<String, ResourceFile> lastModifiedClassesMap = microManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
-        combinedProductFlavors.each {
-            File javaDir = new File(microModuleExtension.mainMicroModule.microModuleDir, "/src/${it}/java")
-            getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
-        }
-
-
         microModuleExtension.includeMicroModules.each {
             MicroModule microModule = it
             combinedProductFlavors.each {
@@ -286,16 +287,18 @@ class MicroModuleCodeCheck {
         return false
     }
 
-    private AndroidManifest getMainManifest() {
-        AndroidManifest mainManifest = new AndroidManifest()
-        def manifest = new File(microModuleExtension.mainMicroModule.microModuleDir, "src/main/AndroidManifest.xml")
-        mainManifest.load(manifest)
-        return mainManifest
-    }
-
     private MicroManifest getMicroManifest() {
         MicroManifest microManifest = new MicroManifest()
-        microManifest.load(project.file("build/microModule/code-check-manifest.xml"))
+        StringBuilder stringBuilder = new StringBuilder('build/microModule/code-check/')
+        if (productFlavor != null) {
+            stringBuilder.append(productFlavor)
+            stringBuilder.append('/')
+        }
+        stringBuilder.append(buildType)
+        project.file(stringBuilder.toString()).mkdirs()
+        stringBuilder.append('/check-manifest.xml')
+        File manifest = project.file(stringBuilder.toString())
+        microManifest.load(manifest)
         return microManifest
     }
 
@@ -303,7 +306,16 @@ class MicroModuleCodeCheck {
         if (microManifest == null) {
             microManifest = new MicroManifest()
         }
-        return microManifest.save(project.file("build/microModule/code-check-manifest.xml"))
+        StringBuilder stringBuilder = new StringBuilder('build/microModule/code-check/')
+        if (productFlavor != null) {
+            stringBuilder.append(productFlavor)
+            stringBuilder.append('/')
+        }
+        stringBuilder.append(buildType)
+        project.file(stringBuilder.toString()).mkdirs()
+        stringBuilder.append('/check-manifest.xml')
+        File manifest = project.file(stringBuilder.toString())
+        return microManifest.save(manifest)
     }
 
 }

@@ -34,13 +34,6 @@ class MicroManifest {
         return rootElement.getAttribute("package")
     }
 
-    long getResourcesLastModified() {
-        if (rootElement == null) return 0
-
-        Element resourcesElement = (Element) rootElement.getElementsByTagName("resources").item(0)
-        return resourcesElement.getAttribute("last-modified").toLong()
-    }
-
     void setResourcesLastModified(long lastModified) {
         resourcesLastModified = lastModified
     }

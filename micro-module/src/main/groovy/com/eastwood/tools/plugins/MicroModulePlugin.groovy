@@ -68,9 +68,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
                 if (mainMicroModule) {
                     clearOriginSourceSet()
-                    includeMicroModule(microModuleExtension.mainMicroModule)
                     microModuleExtension.includeMicroModules.each {
-                        if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
                         includeMicroModule(it)
                     }
                 }
@@ -93,39 +91,28 @@ class MicroModulePlugin implements Plugin<Project> {
             }
 
             // apply MicroModule build.gradle
-            applyMicroModuleBuild(microModuleExtension.mainMicroModule)
-            List<MicroModule> includeMicroModules = microModuleExtension.includeMicroModules.clone()
-            includeMicroModules.each {
-                if (it.name == microModuleExtension.mainMicroModule.name) return
+            microModuleExtension.includeMicroModules.each {
                 applyMicroModuleBuild(it)
             }
 
-            // Check MicroModule dependency
-            checkMicroModuleDependency(microModuleExtension.mainMicroModule)
+            // check MicroModule dependency
             microModuleExtension.includeMicroModules.each {
-                if (it.name == microModuleExtension.mainMicroModule.name) return
                 checkMicroModuleDependency(it)
             }
 
             generateAndroidManifest()
 
             project.tasks.preBuild.doFirst {
-                setMicroModuleDir()
+
+                clearOriginSourceSet()
+                microModuleExtension.includeMicroModules.each {
+                    includeMicroModule(it)
+                }
 
                 generateAndroidManifest()
 
                 generateR()
             }
-        }
-    }
-
-    def setMicroModuleDir() {
-        clearModuleSourceSet("main")
-        // include
-        includeMicroModule(microModuleExtension.mainMicroModule)
-        microModuleExtension.includeMicroModules.each {
-            if (it.name == microModuleExtension.mainMicroModule.name) return
-            includeMicroModule(it)
         }
     }
 
@@ -139,6 +126,7 @@ class MicroModulePlugin implements Plugin<Project> {
             }
             microModuleExtension.mainMicroModule.name = name
             microModuleExtension.mainMicroModule.microModuleDir = microModuleDir
+            microModuleExtension.includeMicroModules.add(microModuleExtension.mainMicroModule)
         }
     }
 
@@ -161,23 +149,21 @@ class MicroModulePlugin implements Plugin<Project> {
 
             def productFlavor = it
             productFlavorInfo.buildTypes.each {
-                mergeAndroidManifest(productFlavor + upperCase(it.name))
+                mergeAndroidManifest(productFlavor + Utils.upperCase(it.name))
             }
         }
 
-        // androidTest
-        def testType = 'androidTest'
-        mergeAndroidManifest(testType)
-        mergeAndroidManifest(testType + "Debug")
+        def androidTest = 'androidTest'
+        mergeAndroidManifest(androidTest)
+        mergeAndroidManifest(androidTest + "Debug")
         if (!productFlavorInfo.singleDimension) {
             productFlavorInfo.productFlavors.each {
-                mergeAndroidManifest(testType + upperCase(it.name))
+                mergeAndroidManifest(androidTest + Utils.upperCase(it.name))
             }
         }
-
         productFlavorInfo.combinedProductFlavors.each {
-            mergeAndroidManifest(testType + upperCase(it))
-            mergeAndroidManifest(testType + upperCase(it) + "Debug")
+            mergeAndroidManifest(androidTest + Utils.upperCase(it))
+            mergeAndroidManifest(androidTest + Utils.upperCase(it) + "Debug")
         }
     }
 
@@ -189,7 +175,7 @@ class MicroModulePlugin implements Plugin<Project> {
         ManifestMerger2.Invoker invoker = new ManifestMerger2.Invoker(mainManifestFile, logger, mergeType, documentType)
         invoker.withFeatures(ManifestMerger2.Invoker.Feature.NO_PLACEHOLDER_REPLACEMENT)
         microModuleExtension.includeMicroModules.each {
-            if (it.name.equals(microModuleExtension.mainMicroModule.name)) return
+            if (it.name == microModuleExtension.mainMicroModule.name) return
             def microManifestFile = new File(it.microModuleDir, "/src/${variantName}/AndroidManifest.xml")
             if (microManifestFile.exists()) {
                 invoker.addLibraryManifest(microManifestFile)
@@ -203,7 +189,7 @@ class MicroModulePlugin implements Plugin<Project> {
         def moduleAndroidManifest = mergingReport.getMergedDocument(MergingReport.MergedManifestKind.MERGED)
         moduleAndroidManifest = new String(moduleAndroidManifest.getBytes("UTF-8"))
 
-        def saveDir = new File(project.projectDir, "build/microModule/${variantName}")
+        def saveDir = new File(project.projectDir, "build/microModule/merge-manifest/${variantName}")
         saveDir.mkdirs()
         def AndroidManifestFile = new File(saveDir, "AndroidManifest.xml")
         AndroidManifestFile.createNewFile()
@@ -215,7 +201,7 @@ class MicroModulePlugin implements Plugin<Project> {
         if (obj == null) {
             return
         }
-        obj.manifest.srcFile project.projectDir.absolutePath + "/build/microModule/${variantName}/AndroidManifest.xml"
+        obj.manifest.srcFile project.projectDir.absolutePath + "/build/microModule/merge-manifest/${variantName}/AndroidManifest.xml"
     }
 
     def includeMicroModule(MicroModule microModule) {
@@ -236,7 +222,7 @@ class MicroModulePlugin implements Plugin<Project> {
             addModuleSourceSet(microModule, it)
             def flavorName = it
             productFlavorInfo.buildTypes.each {
-                addModuleSourceSet(microModule, flavorName + upperCase(it.name))
+                addModuleSourceSet(microModule, flavorName + Utils.upperCase(it.name))
             }
         }
 
@@ -247,7 +233,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (testType == "test") {
                 productFlavorInfo.buildTypes.each {
-                    addModuleSourceSet(microModule, testType + upperCase(it.name))
+                    addModuleSourceSet(microModule, testType + Utils.upperCase(it.name))
                 }
             } else {
                 addModuleSourceSet(microModule, testType + "Debug")
@@ -255,18 +241,17 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (!productFlavorInfo.singleDimension) {
                 productFlavorInfo.productFlavors.each {
-                    addModuleSourceSet(microModule, testType + upperCase(it.name))
+                    addModuleSourceSet(microModule, testType + Utils.upperCase(it.name))
                 }
             }
 
-
             productFlavorInfo.combinedProductFlavors.each {
-                def productFlavorName = testType + upperCase(it)
+                def productFlavorName = testType + Utils.upperCase(it)
                 addModuleSourceSet(microModule, productFlavorName)
 
                 if (testType == "test") {
                     productFlavorInfo.buildTypes.each {
-                        addModuleSourceSet(microModule, productFlavorName + upperCase(it.name))
+                        addModuleSourceSet(microModule, productFlavorName + Utils.upperCase(it.name))
                     }
                 } else {
                     addModuleSourceSet(microModule, productFlavorName + "Debug")
@@ -293,7 +278,7 @@ class MicroModulePlugin implements Plugin<Project> {
             clearModuleSourceSet(it)
             def flavorName = it
             productFlavorInfo.buildTypes.each {
-                clearModuleSourceSet(flavorName + upperCase(it.name))
+                clearModuleSourceSet(flavorName + Utils.upperCase(it.name))
             }
         }
 
@@ -304,7 +289,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (testType == "test") {
                 productFlavorInfo.buildTypes.each {
-                    clearModuleSourceSet(testType + upperCase(it.name))
+                    clearModuleSourceSet(testType + Utils.upperCase(it.name))
                 }
             } else {
                 clearModuleSourceSet(testType + "Debug")
@@ -312,18 +297,17 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (!productFlavorInfo.singleDimension) {
                 productFlavorInfo.productFlavors.each {
-                    clearModuleSourceSet(testType + upperCase(it.name))
+                    clearModuleSourceSet(testType + Utils.upperCase(it.name))
                 }
             }
 
-
             productFlavorInfo.combinedProductFlavors.each {
-                def productFlavorName = testType + upperCase(it)
+                def productFlavorName = testType + Utils.upperCase(it)
                 clearModuleSourceSet(productFlavorName)
 
                 if (testType == "test") {
                     productFlavorInfo.buildTypes.each {
-                        clearModuleSourceSet(productFlavorName + upperCase(it.name))
+                        clearModuleSourceSet(productFlavorName + Utils.upperCase(it.name))
                     }
                 } else {
                     clearModuleSourceSet(productFlavorName + "Debug")
@@ -390,9 +374,6 @@ class MicroModulePlugin implements Plugin<Project> {
                 include = true
             }
         }
-        if (microModuleExtension.mainMicroModule.name == dependencyMicroModule.name) {
-            include = true
-        }
 
         if (!include) {
             throw new GradleException("MicroModle '${microModule.name}' dependency MicroModle '${dependencyMicroModule.name}', but its not included.")
@@ -401,7 +382,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
     def generateR() {
         def microManifestFile = new File(microModuleExtension.mainMicroModule.microModuleDir, mainManifestPath)
-        def mainPackageName = getPackageName(microManifestFile)
+        def mainPackageName = Utils.getAndroidManifestPackageName(microManifestFile)
         productFlavorInfo.buildTypes.each {
             def buildType = it.name
             if (productFlavorInfo.productFlavors.size() == 0) {
@@ -417,7 +398,7 @@ class MicroModulePlugin implements Plugin<Project> {
                     generateRByProductFlavorBuildType(mainPackageName, buildType, it)
                     def combinedProductFlavor = it
                     productFlavorInfo.buildTypes.each {
-                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + upperCase(it.name))
+                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + Utils.upperCase(it.name))
                     }
                 }
             }
@@ -425,8 +406,8 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def generateRByProductFlavorBuildType(mainPackageName, buildType, productFlavor) {
-        def buildTypeFirstUp = upperCase(buildType)
-        def productFlavorFirstUp = productFlavor != null ? upperCase(productFlavor) : ""
+        def buildTypeFirstUp = Utils.upperCase(buildType)
+        def productFlavorFirstUp = productFlavor != null ? Utils.upperCase(productFlavor) : ""
         def processResourcesTaskName = "process${productFlavorFirstUp}${buildTypeFirstUp}Resources"
         def processResourcesTask = project.tasks.findByName(processResourcesTaskName)
         if (processResourcesTask != null) {
@@ -454,20 +435,6 @@ class MicroModulePlugin implements Plugin<Project> {
         }
     }
 
-    def upperCase(String str) {
-        char[] ch = str.toCharArray()
-        if (ch[0] >= 'a' && ch[0] <= 'z') {
-            ch[0] -= 32
-        }
-        return String.valueOf(ch)
-    }
-
-    def getPackageName(File androidManifestFile) {
-        AndroidManifest androidManifest = new AndroidManifest()
-        androidManifest.load(androidManifestFile)
-        return androidManifest.packageName
-    }
-
     def generateMicroModuleResources(packageName, productFlavorBuildType) {
         def packageNames = []
         microModuleExtension.includeMicroModules.each {
@@ -475,7 +442,7 @@ class MicroModulePlugin implements Plugin<Project> {
             if (!microManifestFile.exists()) {
                 return
             }
-            def microModulePackageName = getPackageName(microManifestFile)
+            def microModulePackageName = Utils.getAndroidManifestPackageName(microManifestFile)
             if (microModulePackageName == null || packageNames.contains(microModulePackageName)) return
 
             packageNames << microModulePackageName

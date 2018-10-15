@@ -40,6 +40,7 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
         if(onMicroModuleListener != null) {
             onMicroModuleListener.addMicroModule(mainMicroModule, true)
         }
+        addMicroModule(mainMicroModule)
     }
 
     MicroModule buildMicroModule(String microModulePath) {

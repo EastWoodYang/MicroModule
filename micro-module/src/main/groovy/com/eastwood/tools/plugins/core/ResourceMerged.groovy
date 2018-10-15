@@ -17,7 +17,6 @@ class ResourceMerged {
     List<NodeList> resourceNodeLists
     Map<String, String> resourcesMap
 
-
     boolean load(File projectDir, String mergeTaskName) {
         projectPath = projectDir.absolutePath
         String mergedPath = "build/intermediates/incremental/${mergeTaskName}/merger.xml"
@@ -95,7 +94,6 @@ class ResourceMerged {
                 }
             }
         }
-
 
         return resourcesMap
     }
