@@ -12,7 +12,7 @@ Add buildscript dependency in root project build.gradle:
             ...
         }
         dependencies {
-            classpath 'com.eastwood.tools.plugins:micro-module:1.0.1'
+            classpath 'com.eastwood.tools.plugins:micro-module:1.1.0'
             ...
         }
     }
