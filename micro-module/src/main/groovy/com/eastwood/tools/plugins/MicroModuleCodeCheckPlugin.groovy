@@ -77,8 +77,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
                 if (microModuleCodeCheck == null) {
                     microModuleCodeCheck = new MicroModuleCodeCheck(project, buildType, productFlavor, microModuleReferenceMap)
                 }
-                def productFlavorBuildType = productFlavor != null ? (productFlavor + File.separator + buildType) : buildType
-                microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors, productFlavorBuildType)
+                microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
             }
         }
     }

@@ -40,9 +40,7 @@ class MicroModuleCodeCheck {
     @TaskAction
     void checkResources(String mergeTaskName, List<String> combinedProductFlavors) {
         resourceMerged = new ResourceMerged()
-        resourceMerged.load(project.projectDir, mergeTaskName)
-        if (!resourceMerged.resourcesMergerFile.exists()) {
-            println "[micro-module-code-check] - resourcesMergerFile is not exists!"
+        if (!resourceMerged.load(project.projectDir, mergeTaskName)) {
             return
         }
 
@@ -134,24 +132,15 @@ class MicroModuleCodeCheck {
     }
 
     @TaskAction
-    void checkClasses(String mergeTaskName, List<String> combinedProductFlavors, String productFlavorBuildType) {
-        File classesMergerFile = new File(buildDir, "intermediates/classes/${productFlavorBuildType}/" + microManifest.packageName.replace(".", "/"))
-        if (!classesMergerFile.exists()) {
-            println "[micro-module-code-check] - classesMergerFile is not exists!"
-            return
-        }
-
+    void checkClasses(String mergeTaskName, List<String> combinedProductFlavors) {
         List<File> modifiedClassesList = getModifiedClassesList(combinedProductFlavors)
         if (modifiedClassesList.size() == 0) {
             return
         }
 
-
         if (resourceMerged == null) {
             resourceMerged = new ResourceMerged()
-            resourceMerged.load(project.projectDir, mergeTaskName)
-            if (!resourceMerged.resourcesMergerFile.exists()) {
-                println "[micro-module-code-check] - " + mergeTaskName + ' is not exists!'
+            if (!resourceMerged.load(project.projectDir, mergeTaskName)) {
                 return
             }
         }
