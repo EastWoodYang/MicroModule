@@ -1,4 +1,4 @@
-package com.eastwood.tools.plugins.core
+package com.eastwood.tools.plugins.core.check
 
 class ResourceFile {
     String path

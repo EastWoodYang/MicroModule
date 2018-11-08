@@ -1,5 +1,8 @@
-package com.eastwood.tools.plugins.core
+package com.eastwood.tools.plugins.core.check
 
+import com.eastwood.tools.plugins.core.MicroModule
+import com.eastwood.tools.plugins.core.MicroModuleInfo
+import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.GradleScriptException
 import org.gradle.api.Project
 import org.gradle.api.tasks.TaskAction
@@ -9,9 +12,10 @@ import org.w3c.dom.NodeList
 class MicroModuleCodeCheck {
 
     Project project
+    MicroModuleInfo microModuleInfo
+
     String projectPath
     File buildDir
-    DefaultMicroModuleExtension microModuleExtension
 
     String buildType
     String productFlavor
@@ -19,20 +23,16 @@ class MicroModuleCodeCheck {
     MicroManifest microManifest
     ResourceMerged resourceMerged
 
-    Map<String, List<String>> microModuleReferenceMap
-
     String errorMessage = ""
     String lineSeparator = System.getProperty("line.separator")
 
-    public MicroModuleCodeCheck(Project project, String buildType, String productFlavor, Map<String, List<String>> microModuleReferenceMap) {
+    public MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, String buildType, String productFlavor) {
         this.project = project
+        this.microModuleInfo = microModuleInfo
         this.buildType = buildType
         this.productFlavor = productFlavor
-        this.microModuleReferenceMap = microModuleReferenceMap
         projectPath = project.projectDir.absolutePath
         buildDir = new File(project.projectDir, "build")
-
-        microModuleExtension = project.extensions.getByName("microModule")
 
         microManifest = getMicroManifest()
     }
@@ -54,7 +54,7 @@ class MicroModuleCodeCheck {
             throw new GradleScriptException(errorMessage, null)
         }
 
-        def manifest = new File(microModuleExtension.mainMicroModule.microModuleDir, "src/main/AndroidManifest.xml")
+        def manifest = new File(microModuleInfo.mainMicroModule.microModuleDir, "src/main/AndroidManifest.xml")
         String packageName = Utils.getAndroidManifestPackageName(manifest)
         microManifest.packageName = packageName
         saveMicroManifest()
@@ -121,7 +121,7 @@ class MicroModuleCodeCheck {
                         def message = absolutePath + ':' + (lineIndex + 1)
                         if(!errorMessage.contains(message)) {
                             message += lineSeparator
-                            message += "- can't use [" + find + "] which from MicroModule '${from}'."
+                            message += "- cannot use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator
                             errorMessage += message
                         }
@@ -154,7 +154,7 @@ class MicroModuleCodeCheck {
     List<File> getModifiedClassesList(List<String> combinedProductFlavors) {
         Map<String, ResourceFile> lastModifiedClassesMap = microManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
-        microModuleExtension.includeMicroModules.each {
+        microModuleInfo.includeMicroModules.each {
             MicroModule microModule = it
             combinedProductFlavors.each {
                 File javaDir = new File(microModule.microModuleDir, "/src/${it}/java")
@@ -228,7 +228,7 @@ class MicroModuleCodeCheck {
                         def message = absolutePath + ':' + (lineIndex + 1)
                         if(!errorMessage.contains(message)) {
                             message += lineSeparator
-                            message += "- can't use [" + find + "] which from MicroModule '${from}'."
+                            message += "- cannot use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator
                             errorMessage += message
                         }
@@ -258,7 +258,7 @@ class MicroModuleCodeCheck {
     }
 
     boolean isReference(String microModuleName, String from, List<String> original) {
-        List<String> referenceList = microModuleReferenceMap.get(microModuleName)
+        List<String> referenceList = microModuleInfo.microModuleDependency.get(microModuleName)
         if (referenceList == null) return false
         if (referenceList.contains(from)) {
             return true

@@ -2,9 +2,10 @@ package com.eastwood.tools.plugins
 
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestedExtension
-import com.eastwood.tools.plugins.core.MicroModuleCodeCheck
+import com.eastwood.tools.plugins.core.MicroModuleInfo
 import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import com.eastwood.tools.plugins.core.Utils
+import com.eastwood.tools.plugins.core.check.MicroModuleCodeCheck
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -12,7 +13,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
 
     Project project
 
-    Map<String, List<String>> microModuleReferenceMap
+    MicroModuleInfo microModuleInfo
     ProductFlavorInfo productFlavorInfo
 
     void apply(Project project) {
@@ -23,8 +24,8 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
             if (microModulePlugin == null) {
 
             }
+            microModuleInfo = microModulePlugin.microModuleInfo
             productFlavorInfo = microModulePlugin.productFlavorInfo
-            microModuleReferenceMap = microModulePlugin.microModuleDependencyMap
 
             def taskNamePrefix
             TestedExtension extension = (TestedExtension) project.extensions.getByName("android")
@@ -64,7 +65,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
         def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
         if (packageResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project, buildType, productFlavor, microModuleReferenceMap)
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
             packageResourcesTask.doLast {
                 microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
             }
@@ -75,7 +76,7 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
                 if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project, buildType, productFlavor, microModuleReferenceMap)
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
                 }
                 microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
             }

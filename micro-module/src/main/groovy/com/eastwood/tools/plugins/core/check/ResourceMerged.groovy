@@ -1,4 +1,4 @@
-package com.eastwood.tools.plugins.core
+package com.eastwood.tools.plugins.core.check
 
 import org.w3c.dom.Document
 import org.w3c.dom.Element

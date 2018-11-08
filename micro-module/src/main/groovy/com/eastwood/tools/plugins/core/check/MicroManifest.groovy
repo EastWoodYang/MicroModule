@@ -1,4 +1,4 @@
-package com.eastwood.tools.plugins.core
+package com.eastwood.tools.plugins.core.check
 
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -134,4 +134,5 @@ class MicroManifest {
         transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2")
         transformer.transform(new DOMSource(microModuleXmlTemp), new StreamResult(destFile))
     }
+
 }

@@ -13,7 +13,7 @@ dependencies {
     compile gradleApi()
     compile localGroovy()
     implementation 'net.sf.kxml:kxml2:2.3.0'
-    implementation 'com.android.tools.build:gradle:3.1.2'
+    implementation 'com.android.tools.build:gradle:3.2.1'
 }
 
 apply plugin: 'maven'
