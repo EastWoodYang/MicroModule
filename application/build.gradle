@@ -60,11 +60,9 @@ android {
 }
 
 microModule {
-    include ':p_home'
-    include ':p_common'
-
     include ':p_base'
-
+    include ':p_common'
+    include ':p_home'
 }
 
 dependencies {
@@ -75,4 +73,5 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
     implementation project(':library')
+
 }

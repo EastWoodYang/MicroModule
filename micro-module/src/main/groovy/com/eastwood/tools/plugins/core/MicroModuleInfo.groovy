@@ -58,7 +58,7 @@ class MicroModuleInfo {
     }
 
     void setMicroModuleDependency(String targetMicroModule, String dependencyMicroModule) {
-        List<String> dependencyList = microModuleDependency.get(dependencyMicroModule)
+        List<String> dependencyList = microModuleDependency.get(targetMicroModule)
         if (dependencyList == null) {
             dependencyList = new ArrayList<>()
             dependencyList.add(dependencyMicroModule)

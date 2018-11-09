@@ -1,7 +1,6 @@
 package com.eastwood.tools.plugins.core.extension
 
 import com.eastwood.tools.plugins.core.MicroModule
-import com.eastwood.tools.plugins.core.MicroModuleInfo
 import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.Action
 import org.gradle.api.GradleException
@@ -10,13 +9,15 @@ import org.gradle.api.Project
 class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     Project project
-    MicroModuleInfo microModuleInfo
     OnMicroModuleListener onMicroModuleListener
 
-    DefaultMicroModuleExtension(Project project, MicroModuleInfo microModuleInfo) {
+    DefaultMicroModuleExtension(Project project, OnMicroModuleListener listener) {
         this.project = project
-        this.microModuleInfo = microModuleInfo
-        microModuleInfo.setMainMicroModule(':main')
+        this.onMicroModuleListener = listener
+        MicroModule microModule = Utils.buildMicroModule(project, ':main')
+        if (microModule != null) {
+            onMicroModuleListener.addMicroModule(microModule, true)
+        }
     }
 
     @Override
@@ -25,12 +26,9 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
         for (int i = 0; i < microModulePathsLen; i++) {
             MicroModule microModule = Utils.buildMicroModule(project, microModulePaths[i])
             if (microModule == null) {
-                throw new GradleException("cannot find specified MicroModule '${microModulePaths[i]}'.")
+                throw new GradleException("MicroModule with path ':${microModulePaths[i]}' could not be found in ${project.getDisplayName()}.")
             }
-            microModuleInfo.addMicroModule(microModule)
-            if (onMicroModuleListener != null) {
-                onMicroModuleListener.addMicroModule(microModule)
-            }
+            onMicroModuleListener.addMicroModule(microModule, false)
         }
     }
 
@@ -38,12 +36,9 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     void mainMicroModule(String microModulePath) {
         MicroModule microModule = Utils.buildMicroModule(project, microModulePath)
         if (microModule == null) {
-            throw new GradleException("cannot find specified MicroModule '${microModulePath}'.")
+            throw new GradleException("MicroModule with path ':${microModulePath}' could not be found in ${project.getDisplayName()}.")
         }
-        microModuleInfo.setMainMicroModule(microModule)
-        if (onMicroModuleListener != null) {
-            onMicroModuleListener.addMicroModule(microModule)
-        }
+        onMicroModuleListener.addMicroModule(microModule, true)
     }
 
     @Override

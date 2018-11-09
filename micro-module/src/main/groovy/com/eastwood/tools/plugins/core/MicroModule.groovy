@@ -13,4 +13,5 @@ class MicroModule {
     MavenRepository mavenRepository
 
     boolean applyScript
+
 }

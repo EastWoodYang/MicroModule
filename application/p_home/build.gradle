@@ -1,3 +1,5 @@
 dependencies {
 //    implementation microModule(':you-created-micro-module-name')
+
+    implementation microModule(':p_common')
 }

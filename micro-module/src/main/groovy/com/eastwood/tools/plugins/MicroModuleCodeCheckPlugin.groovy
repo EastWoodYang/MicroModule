@@ -24,6 +24,10 @@ class MicroModuleCodeCheckPlugin implements Plugin<Project> {
             if (microModulePlugin == null) {
 
             }
+            if (microModulePlugin.mStartTask == MicroModulePlugin.UPLOAD_AAR && !microModulePlugin.runUploadTask) {
+                return
+            }
+
             microModuleInfo = microModulePlugin.microModuleInfo
             productFlavorInfo = microModulePlugin.productFlavorInfo
 
