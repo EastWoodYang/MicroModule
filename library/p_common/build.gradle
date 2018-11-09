@@ -1,6 +1,6 @@
 microModule {
 
-    useMavenArtifact true
+    useMavenArtifact false
 
     mavenArtifact {
         groupId 'com.eastwood.demo'
