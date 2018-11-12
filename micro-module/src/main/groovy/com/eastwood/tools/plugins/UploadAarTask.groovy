@@ -14,7 +14,7 @@ class UploadAarTask extends DefaultTask {
     void upload() {
         MavenArtifact mavenArtifact = microModule.mavenArtifact
         MavenRepository mavenRepository = microModule.mavenRepository
-        getLogger().error("\nUpload aar (" + mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version + ") to repository (" + mavenRepository.url + ")")
+        getLogger().error("\nUpload artifact(" + mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version + ") to repository(" + mavenRepository.url + ").")
     }
 
 }

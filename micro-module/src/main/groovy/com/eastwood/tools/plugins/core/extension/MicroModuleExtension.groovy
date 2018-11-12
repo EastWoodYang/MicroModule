@@ -4,6 +4,8 @@ import org.gradle.api.Action
 
 interface MicroModuleExtension {
 
+    void codeCheckEnabled(boolean disable)
+
     void include(String... microModulePaths)
 
     void mainMicroModule(String microModulePath)

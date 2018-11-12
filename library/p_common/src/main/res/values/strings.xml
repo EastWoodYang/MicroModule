@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="test_code_check_utils">utils</string>
+    <string name="test_code_check_common">common</string>
 </resources>

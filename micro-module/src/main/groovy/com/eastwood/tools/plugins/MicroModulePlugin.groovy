@@ -1,6 +1,7 @@
 package com.eastwood.tools.plugins
 
 import com.android.build.gradle.BaseExtension
+import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.tasks.factory.AndroidJavaCompile
 import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
@@ -10,34 +11,39 @@ import com.eastwood.tools.plugins.core.MicroModule
 import com.eastwood.tools.plugins.core.MicroModuleInfo
 import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import com.eastwood.tools.plugins.core.Utils
+import com.eastwood.tools.plugins.core.check.MicroModuleCodeCheck
 import com.eastwood.tools.plugins.core.extension.*
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.execution.TaskExecutionListener
+import org.gradle.api.tasks.TaskState
 
 class MicroModulePlugin implements Plugin<Project> {
 
     final static String RPath = "/build/generated/source/r/"
     final static String RPath_3_2 = "/build/generated/not_namespaced_r_class_sources/"
     final static String mainManifestPath = "/src/main/AndroidManifest.xml"
-    final static String UploadAarTaskPrefix = 'uploadAarForMicroModule_';
+    final static String UploadAarTaskPrefix = 'uploadAarForMicroModule_'
 
     final static String NORMAL = "normal"
     final static String UPLOAD_AAR = "upload_aar"
     final static String ASSEMBLE_OR_GENERATE = "assemble_or_generate"
 
-    String mStartTask = NORMAL
-    boolean runUploadTask
+    static TaskExecutionListener taskExecutionListener
 
     Project project
 
+    String mStartTask = NORMAL
+    boolean runUploadTask
+
     MicroModuleInfo microModuleInfo
+    ProductFlavorInfo productFlavorInfo
 
     MicroModule currentMicroModule
-
-    ProductFlavorInfo productFlavorInfo
 
     boolean clearOriginSourceSet
     boolean applyMainMicroModuleScript
@@ -51,11 +57,22 @@ class MicroModulePlugin implements Plugin<Project> {
         this.project = project
         this.microModuleInfo = new MicroModuleInfo(project)
 
-        project.gradle.taskGraph.afterTask { task, state ->
-            if (task instanceof AndroidJavaCompile && state.failure) {
-                println '\n* MicroModule Tip: The MicroModule to which classes or resources belong may not be dependent.\n' +
-                        '================================================================================='
+        if(taskExecutionListener == null) {
+            taskExecutionListener = new TaskExecutionListener() {
+                @Override
+                void beforeExecute(Task task) {
+
+                }
+
+                @Override
+                void afterExecute(Task task, TaskState taskState) {
+                    if (task instanceof AndroidJavaCompile && taskState.failure) {
+                        println '\n* MicroModule Tip: The MicroModule to which classes or resources belong may not be dependent.\n' +
+                                '============================================================================================='
+                    }
+                }
             }
+            project.gradle.taskGraph.addTaskExecutionListener(taskExecutionListener)
         }
 
         project.gradle.getStartParameter().taskNames.each {
@@ -97,6 +114,8 @@ class MicroModulePlugin implements Plugin<Project> {
                 if (mStartTask == UPLOAD_AAR) {
                     if (microModule.name == uploadMicroModuleName) {
                         microModuleInfo.setMainMicroModule(microModule)
+                    } else {
+                        microModuleInfo.addMicroModule(microModule)
                     }
                 } else {
                     if (mainMicroModule) {
@@ -128,7 +147,7 @@ class MicroModulePlugin implements Plugin<Project> {
                 }
             }
         }
-        project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project, onMicroModuleListener)
+        DefaultMicroModuleExtension microModuleExtension = project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project, onMicroModuleListener)
 
         project.dependencies.metaClass.microModule { String path ->
             if (currentMicroModule == null) {
@@ -136,7 +155,6 @@ class MicroModulePlugin implements Plugin<Project> {
             }
 
             if (!applyMainMicroModuleScript || applyDependencyMicroModuleScript) return []
-
 
             MicroModule microModule = mStartTask == UPLOAD_AAR ? Utils.buildMicroModule(project, path) : microModuleInfo.getMicroModule(path)
             if (microModule == null) {
@@ -183,6 +201,10 @@ class MicroModulePlugin implements Plugin<Project> {
         }
 
         project.afterEvaluate {
+            if (microModuleInfo.mainMicroModule == null) {
+                throw new GradleException("the main MicroModule could not be found in ${project.getDisplayName()}.")
+            }
+
             if (mStartTask == UPLOAD_AAR && !runUploadTask) return
 
             appliedLibraryPlugin = project.pluginManager.hasPlugin('com.android.library')
@@ -198,10 +220,6 @@ class MicroModulePlugin implements Plugin<Project> {
                     createUploadMicroModuleAarTask(it)
                 }
             } else {
-                if (microModuleInfo.mainMicroModule == null) {
-
-                }
-
                 addMicroModuleSourceSet(microModuleInfo.mainMicroModule)
                 applyMainMicroModuleScript = true
                 applyMicroModuleScript(microModuleInfo.mainMicroModule)
@@ -242,6 +260,33 @@ class MicroModulePlugin implements Plugin<Project> {
 
                 generateR()
             }
+
+            if (!microModuleExtension.codeCheckEnabled) {
+                project.gradle.taskGraph.whenReady {
+                    BaseExtension extension = (BaseExtension) project.extensions.getByName("android")
+                    def taskNamePrefix = extension instanceof LibraryExtension ? 'package' : 'merge'
+                    extension.buildTypes.each {
+                        def buildType = it.name
+                        if (productFlavorInfo.combinedProductFlavors.size() == 0) {
+                            List<String> combinedProductFlavors = new ArrayList<>()
+                            combinedProductFlavors.add('main')
+                            combinedProductFlavors.add(buildType)
+                            check(taskNamePrefix, buildType, null, combinedProductFlavors)
+                        } else {
+                            productFlavorInfo.combinedProductFlavors.each {
+                                List<String> combinedProductFlavors = new ArrayList<>()
+                                combinedProductFlavors.add('main')
+                                combinedProductFlavors.addAll(productFlavorInfo.combinedProductFlavorsMap.get(it))
+                                combinedProductFlavors.add(buildType)
+                                combinedProductFlavors.add(it)
+                                combinedProductFlavors.add(it + Utils.upperCase(buildType))
+                                check(taskNamePrefix, buildType, it, combinedProductFlavors)
+                            }
+                        }
+                    }
+                }
+            }
+
         }
 
     }
@@ -638,6 +683,33 @@ class MicroModulePlugin implements Plugin<Project> {
             }
             def uploadArchives = project.getTasks().getByName('uploadArchives')
             task.dependsOn uploadArchives
+        }
+    }
+
+    def check(taskPrefix, buildType, productFlavor, combinedProductFlavors) {
+        MicroModuleCodeCheck microModuleCodeCheck
+
+        def buildTypeFirstUp = Utils.upperCase(buildType)
+        def productFlavorFirstUp = productFlavor != null ? Utils.upperCase(productFlavor) : ""
+
+        def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
+        def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
+        if (packageResourcesTask != null) {
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
+            packageResourcesTask.doLast {
+                microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
+            }
+        }
+
+        def compileJavaTaskName = "compile${productFlavorFirstUp}${buildTypeFirstUp}JavaWithJavac"
+        def compileJavaTask = project.tasks.findByName(compileJavaTaskName)
+        if (compileJavaTask != null) {
+            compileJavaTask.doLast {
+                if (microModuleCodeCheck == null) {
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
+                }
+                microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
+            }
         }
     }
 

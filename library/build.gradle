@@ -1,6 +1,5 @@
 apply plugin: 'micro-module'
 apply plugin: 'com.android.library'
-apply plugin: 'micro-module-code-check'
 
 android {
     compileSdkVersion 27

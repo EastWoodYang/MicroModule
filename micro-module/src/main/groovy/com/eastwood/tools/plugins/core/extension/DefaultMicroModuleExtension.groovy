@@ -11,6 +11,8 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     Project project
     OnMicroModuleListener onMicroModuleListener
 
+    boolean codeCheckEnabled
+
     DefaultMicroModuleExtension(Project project, OnMicroModuleListener listener) {
         this.project = project
         this.onMicroModuleListener = listener
@@ -18,6 +20,11 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
         if (microModule != null) {
             onMicroModuleListener.addMicroModule(microModule, true)
         }
+    }
+
+    @Override
+    void codeCheckEnabled(boolean enabled) {
+        this.codeCheckEnabled = enabled
     }
 
     @Override

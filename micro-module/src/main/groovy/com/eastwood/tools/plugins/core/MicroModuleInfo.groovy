@@ -17,15 +17,6 @@ class MicroModuleInfo {
         microModuleDependency = new HashMap<>()
     }
 
-    void setMainMicroModule(String name) {
-        MicroModule microModule = Utils.buildMicroModule(project, name)
-        if (microModule == null) {
-            throw new GradleException("cannot find main MicroModule '${name}'.")
-        }
-        this.mainMicroModule = microModule
-        addMicroModule(microModule)
-    }
-
     void setMainMicroModule(MicroModule microModule) {
         if (microModule == null) {
             throw new GradleException("main MicroModule cannot be null.")

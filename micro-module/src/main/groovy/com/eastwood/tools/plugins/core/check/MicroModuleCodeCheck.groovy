@@ -26,7 +26,7 @@ class MicroModuleCodeCheck {
     String errorMessage = ""
     String lineSeparator = System.getProperty("line.separator")
 
-    public MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, String buildType, String productFlavor) {
+    MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, String buildType, String productFlavor) {
         this.project = project
         this.microModuleInfo = microModuleInfo
         this.buildType = buildType
@@ -119,7 +119,7 @@ class MicroModuleCodeCheck {
                         }
 
                         def message = absolutePath + ':' + (lineIndex + 1)
-                        if(!errorMessage.contains(message)) {
+                        if (!errorMessage.contains(message)) {
                             message += lineSeparator
                             message += "- cannot use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator
@@ -226,7 +226,7 @@ class MicroModuleCodeCheck {
                         }
 
                         def message = absolutePath + ':' + (lineIndex + 1)
-                        if(!errorMessage.contains(message)) {
+                        if (!errorMessage.contains(message)) {
                             message += lineSeparator
                             message += "- cannot use [" + find + "] which from MicroModule '${from}'."
                             message += lineSeparator

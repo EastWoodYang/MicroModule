@@ -18,7 +18,7 @@ microModule {
 dependencies {
     implementation fileTree(dir: 'main/libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:27.1.1'
-    implementation microModule(':p_utils')
 
+    implementation microModule(':p_utils')
     implementation microModule(':p_common')
 }
