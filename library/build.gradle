@@ -67,9 +67,11 @@ dependencies {
 }
 
 microModule {
+    codeCheckEnabled true
+
     include ':p_base'
     include ':p_common'
-
     include ':p_utils'
 
+    export ':main'
 }

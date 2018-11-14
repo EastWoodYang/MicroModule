@@ -10,7 +10,6 @@ class MicroModule {
 
     boolean useMavenArtifact
     MavenArtifact mavenArtifact
-    MavenRepository mavenRepository
 
     boolean applyScript
 

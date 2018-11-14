@@ -2,9 +2,9 @@ package com.eastwood.tools.plugins.core.extension
 
 import com.eastwood.tools.plugins.core.MicroModule
 import com.eastwood.tools.plugins.core.Utils
-import org.gradle.api.Action
 import org.gradle.api.GradleException
 import org.gradle.api.Project
+import org.gradle.util.ConfigureUtil
 
 class DefaultMicroModuleExtension implements MicroModuleExtension {
 
@@ -28,6 +28,13 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     }
 
     @Override
+    void export(String... microModulePaths) {
+        if (onMicroModuleListener != null) {
+            onMicroModuleListener.exportMicroModule(microModulePaths)
+        }
+    }
+
+    @Override
     void include(String... microModulePaths) {
         int microModulePathsLen = microModulePaths.size()
         for (int i = 0; i < microModulePathsLen; i++) {
@@ -40,7 +47,7 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     }
 
     @Override
-    void mainMicroModule(String microModulePath) {
+    void includeMain(String microModulePath) {
         MicroModule microModule = Utils.buildMicroModule(project, microModulePath)
         if (microModule == null) {
             throw new GradleException("MicroModule with path ':${microModulePath}' could not be found in ${project.getDisplayName()}.")
@@ -56,20 +63,11 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     }
 
     @Override
-    void mavenArtifact(Action<? super MavenArtifact> action) {
+    void mavenArtifact(Closure closure) {
         if (onMicroModuleListener != null) {
-            MavenArtifact artifact = new MavenArtifact()
-            action.execute(artifact)
-            onMicroModuleListener.onMavenArtifactChanged(artifact)
-        }
-    }
-
-    @Override
-    void mavenRepository(Action<? super MavenRepository> action) {
-        if (onMicroModuleListener != null) {
-            MavenRepository repository = new MavenRepository()
-            action.execute(repository)
-            onMicroModuleListener.onMavenRepositoryChanged(repository)
+            MavenArtifact mavenArtifact = new MavenArtifact()
+            ConfigureUtil.configure(closure, mavenArtifact)
+            onMicroModuleListener.onMavenArtifactChanged(mavenArtifact)
         }
     }
 

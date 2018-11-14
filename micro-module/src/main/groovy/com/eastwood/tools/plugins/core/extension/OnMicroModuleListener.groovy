@@ -6,10 +6,10 @@ interface OnMicroModuleListener {
 
     void addMicroModule(MicroModule microModule, boolean mainMicroModule)
 
+    void exportMicroModule(String... microModulePaths)
+
     void onUseMavenArtifactChanged(boolean value)
 
     void onMavenArtifactChanged(MavenArtifact artifact)
-
-    void onMavenRepositoryChanged(MavenRepository repository)
 
 }

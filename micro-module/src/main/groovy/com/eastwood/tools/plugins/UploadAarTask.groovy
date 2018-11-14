@@ -13,7 +13,7 @@ class UploadAarTask extends DefaultTask {
     @TaskAction
     void upload() {
         MavenArtifact mavenArtifact = microModule.mavenArtifact
-        MavenRepository mavenRepository = microModule.mavenRepository
+        MavenRepository mavenRepository = mavenArtifact.repository
         getLogger().error("\nUpload artifact(" + mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version + ") to repository(" + mavenRepository.url + ").")
     }
 

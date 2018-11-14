@@ -6,12 +6,13 @@ microModule {
         groupId 'com.eastwood.demo'
         artifactId 'library-p_common'
         version '1.0.0-SNAPSHOT'
+
+        repository {
+            url "http://10.10.9.201:8081/repository/android-dev/"
+            authentication(userName: 'admin', password: 'admin123')
+        }
     }
 
-    mavenRepository {
-        url "http://10.10.9.201:8081/repository/android-dev/"
-        authentication(userName: 'admin', password: 'admin123')
-    }
 
 }
 

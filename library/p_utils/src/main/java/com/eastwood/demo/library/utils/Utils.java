@@ -9,6 +9,6 @@ import android.content.Context;
 public class Utils {
 
     public static String getString(Context context) {
-        return context.getString(R.string.test_code_check);
+        return context.getString(R.string.test_code_check_utils);
     }
 }
