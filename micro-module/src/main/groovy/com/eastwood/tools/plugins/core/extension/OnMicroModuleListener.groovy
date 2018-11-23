@@ -8,8 +8,4 @@ interface OnMicroModuleListener {
 
     void exportMicroModule(String... microModulePaths)
 
-    void onUseMavenArtifactChanged(boolean value)
-
-    void onMavenArtifactChanged(MavenArtifact artifact)
-
 }

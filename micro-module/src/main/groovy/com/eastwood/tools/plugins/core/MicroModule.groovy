@@ -12,5 +12,6 @@ class MicroModule {
     MavenArtifact mavenArtifact
 
     boolean applyScript
+    boolean addDependency
 
 }

@@ -11,10 +11,18 @@ class MicroModuleInfo {
 
     Map<String, List<String>> microModuleDependency
 
+    Digraph<String> dependencyGraph
+
     MicroModuleInfo(Project project) {
         this.project = project
         this.includeMicroModules = new ArrayList<>()
         microModuleDependency = new HashMap<>()
+        dependencyGraph = new Digraph<String>()
+
+        MicroModule microModule = Utils.buildMicroModule(project, ':main')
+        if (microModule != null) {
+            setMainMicroModule(microModule)
+        }
     }
 
     void setMainMicroModule(MicroModule microModule) {
@@ -48,15 +56,28 @@ class MicroModuleInfo {
         return microModuleDependency.get(name)
     }
 
-    void setMicroModuleDependency(String targetMicroModule, String dependencyMicroModule) {
-        List<String> dependencyList = microModuleDependency.get(targetMicroModule)
+    void setMicroModuleDependency(String target, String dependency) {
+        MicroModule dependencyMicroModule = getMicroModule(dependency)
+        if(dependencyMicroModule == null) {
+            if(Utils.buildMicroModule(project, dependency) != null) {
+                throw new GradleException("MicroModule '${microModule.name}' dependency MicroModle '${name}', but its not included.")
+            } else {
+                throw new GradleException("MicroModule with path '${path}' could not be found in ${project.getDisplayName()}.")
+            }
+        }
+
+        dependencyGraph.add(target, dependency)
+        if(!dependencyGraph.isDag()) {
+            throw new GradleException("Circular dependency between MicroModule '${target}' and '${dependency}'.")
+        }
+        List<String> dependencyList = microModuleDependency.get(target)
         if (dependencyList == null) {
             dependencyList = new ArrayList<>()
-            dependencyList.add(dependencyMicroModule)
-            microModuleDependency.put(targetMicroModule, dependencyList)
+            dependencyList.add(dependency)
+            microModuleDependency.put(target, dependencyList)
         } else {
-            if (!dependencyList.contains(dependencyMicroModule)) {
-                dependencyList.add(dependencyMicroModule)
+            if (!dependencyList.contains(dependency)) {
+                dependencyList.add(dependency)
             }
         }
     }

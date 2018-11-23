@@ -10,16 +10,12 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     Project project
     OnMicroModuleListener onMicroModuleListener
+    OnMavenArtifactListener onMavenArtifactListener
 
     boolean codeCheckEnabled
 
-    DefaultMicroModuleExtension(Project project, OnMicroModuleListener listener) {
+    DefaultMicroModuleExtension(Project project) {
         this.project = project
-        this.onMicroModuleListener = listener
-        MicroModule microModule = Utils.buildMicroModule(project, ':main')
-        if (microModule != null) {
-            onMicroModuleListener.addMicroModule(microModule, true)
-        }
     }
 
     @Override
@@ -29,15 +25,17 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     @Override
     void export(String... microModulePaths) {
-        if (onMicroModuleListener != null) {
-            onMicroModuleListener.exportMicroModule(microModulePaths)
-        }
+        if(onMicroModuleListener == null) return
+
+        onMicroModuleListener.exportMicroModule(microModulePaths)
     }
 
     @Override
     void include(String... microModulePaths) {
-        int microModulePathsLen = microModulePaths.size()
-        for (int i = 0; i < microModulePathsLen; i++) {
+        if(onMicroModuleListener == null) return
+
+        int size = microModulePaths.size()
+        for (int i = 0; i < size; i++) {
             MicroModule microModule = Utils.buildMicroModule(project, microModulePaths[i])
             if (microModule == null) {
                 throw new GradleException("MicroModule with path ':${microModulePaths[i]}' could not be found in ${project.getDisplayName()}.")
@@ -48,6 +46,8 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     @Override
     void includeMain(String microModulePath) {
+        if(onMicroModuleListener == null) return
+
         MicroModule microModule = Utils.buildMicroModule(project, microModulePath)
         if (microModule == null) {
             throw new GradleException("MicroModule with path ':${microModulePath}' could not be found in ${project.getDisplayName()}.")
@@ -57,18 +57,18 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     @Override
     void useMavenArtifact(boolean value) {
-        if (onMicroModuleListener != null) {
-            onMicroModuleListener.onUseMavenArtifactChanged(value)
-        }
+        if(onMavenArtifactListener == null) return
+
+        onMavenArtifactListener.onUseMavenArtifactChanged(value)
     }
 
     @Override
     void mavenArtifact(Closure closure) {
-        if (onMicroModuleListener != null) {
-            MavenArtifact mavenArtifact = new MavenArtifact()
-            ConfigureUtil.configure(closure, mavenArtifact)
-            onMicroModuleListener.onMavenArtifactChanged(mavenArtifact)
-        }
+        if(onMavenArtifactListener == null) return
+
+        MavenArtifact mavenArtifact = new MavenArtifact()
+        ConfigureUtil.configure(closure, mavenArtifact)
+        onMavenArtifactListener.onMavenArtifactChanged(mavenArtifact)
     }
 
 }
