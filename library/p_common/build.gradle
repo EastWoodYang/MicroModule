@@ -8,8 +8,8 @@ microModule {
         version '1.0.0-SNAPSHOT'
 
         repository {
-            url "http://10.10.9.201:8081/repository/android-dev/"
-            authentication(userName: 'admin', password: 'admin123')
+            url "***"
+            authentication(userName: '***', password: '***')
         }
     }
 
@@ -17,6 +17,5 @@ microModule {
 }
 
 dependencies {
-//    implementation microModule(':you-created-micro-module-name')
     implementation microModule(':p_base')
 }
