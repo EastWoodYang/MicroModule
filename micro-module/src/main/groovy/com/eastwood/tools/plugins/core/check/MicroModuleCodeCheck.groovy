@@ -2,6 +2,7 @@ package com.eastwood.tools.plugins.core.check
 
 import com.eastwood.tools.plugins.core.MicroModule
 import com.eastwood.tools.plugins.core.MicroModuleInfo
+import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.GradleScriptException
 import org.gradle.api.Project
@@ -13,6 +14,7 @@ class MicroModuleCodeCheck {
 
     Project project
     MicroModuleInfo microModuleInfo
+    ProductFlavorInfo productFlavorInfo
 
     String projectPath
     File buildDir
@@ -26,9 +28,12 @@ class MicroModuleCodeCheck {
     String errorMessage = ""
     String lineSeparator = System.getProperty("line.separator")
 
-    MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, String buildType, String productFlavor) {
+    Map<String, List<String>> microModulePackageNameMap
+
+    MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, ProductFlavorInfo productFlavorInfo, String buildType, String productFlavor) {
         this.project = project
         this.microModuleInfo = microModuleInfo
+        this.productFlavorInfo = productFlavorInfo
         this.buildType = buildType
         this.productFlavor = productFlavor
         projectPath = project.projectDir.absolutePath
@@ -197,6 +202,8 @@ class MicroModuleCodeCheck {
             classesMap.put(name, resourceFile.microModuleName)
         }
 
+        initMicroModulePackageName()
+
         def resourcesPattern = /R.(dimen|drawable|color|string|style|id|mipmap|layout).[A-Za-z0-9_]+|import\s[A-Za-z0-9_.]+/
         modifiedClassesList.each {
             String text = it.text
@@ -213,6 +220,10 @@ class MicroModuleCodeCheck {
                     from = resourcesMap.get(name)
                 } else if (find.startsWith("import")) {
                     name = find.substring(find.lastIndexOf(" ") + 1, find.length())
+                    if (name.endsWith('.R') || name.endsWith('.BuildConfig')) {
+                        handleMicroModuleRAndBuildConfig(microModuleName, name, find, textLines, absolutePath)
+                        continue
+                    }
                     from = classesMap.get(name)
                 }
 
@@ -278,6 +289,101 @@ class MicroModuleCodeCheck {
         stringBuilder.append('/check-manifest.xml')
         File manifest = project.file(stringBuilder.toString())
         return microManifest.save(manifest)
+    }
+
+    private void handleMicroModuleRAndBuildConfig(String microModuleName, String name, String find, List<String> textLines, String absolutePath) {
+        String packageName = name.substring(0, name.lastIndexOf('.'))
+        List<String> microModules = microModulePackageNameMap.get(packageName)
+        if (microModules == null || microModules.contains(name)) return
+
+        boolean hasDependency
+        List<String> withoutDependency = new ArrayList<>()
+        for (String from : microModules) {
+            hasDependency = microModuleInfo.hasDependency(microModuleName, from)
+            if (hasDependency) {
+                break
+            }
+            withoutDependency.add(from)
+        }
+
+        if (hasDependency) {
+            return
+        }
+
+        List<Number> lines = textLines.findIndexValues { it.contains(find) }
+        lines.each {
+            def lineIndex = it.intValue()
+            def lineContext = textLines.get(lineIndex).trim()
+            if (lineContext.startsWith("//") || lineContext.startsWith("/*")) {
+                return
+            }
+
+            def message = absolutePath + ':' + (lineIndex + 1)
+            if (!errorMessage.contains(message)) {
+                message += lineSeparator
+                message += "- cannot use [" + find + "] which from MicroModule '${withoutDependency.get(0)}'."
+                message += lineSeparator
+                errorMessage += message
+            }
+        }
+    }
+
+    private String initMicroModulePackageName() {
+        microModulePackageNameMap = new HashMap<>()
+        microModuleInfo.includeMicroModules.each {
+            MicroModule microModule = it
+            boolean find = false
+            List<String> flavorList = productFlavorInfo.combinedProductFlavorsMap.get(productFlavor)
+            if (flavorList != null && !flavorList.isEmpty()) {
+                for (String flavor : flavorList) {
+                    File manifest = new File(microModule.microModuleDir, "/src/${flavor}/AndroidManifest.xml")
+                    if (manifest.exists()) {
+                        String packageName = Utils.getAndroidManifestPackageName(manifest)
+                        if (packageName != null && !packageName.isEmpty()) {
+                            List<String> microModuleList = microModulePackageNameMap.get(packageName)
+                            if (microModuleList == null) {
+                                microModuleList = new ArrayList<>()
+                                microModulePackageNameMap.put(packageName, microModuleList)
+                            }
+                            microModuleList.add(microModule.name)
+                            find = true
+                            break
+                        }
+                    }
+                }
+            }
+
+            if (!find) {
+                File manifest = new File(microModule.microModuleDir, "/src/${buildType}/AndroidManifest.xml")
+                if (manifest.exists()) {
+                    String packageName = Utils.getAndroidManifestPackageName(manifest)
+                    if (packageName != null && !packageName.isEmpty()) {
+                        List<String> microModuleList = microModulePackageNameMap.get(packageName)
+                        if (microModuleList == null) {
+                            microModuleList = new ArrayList<>()
+                            microModulePackageNameMap.put(packageName, microModuleList)
+                        }
+                        microModuleList.add(microModule.name)
+                        find = true
+                    }
+                }
+            }
+
+            if (!find) {
+                File manifest = new File(microModule.microModuleDir, "/src/main/AndroidManifest.xml")
+                if (manifest.exists()) {
+                    String packageName = Utils.getAndroidManifestPackageName(manifest)
+                    if (packageName != null && !packageName.isEmpty()) {
+                        List<String> microModuleList = microModulePackageNameMap.get(packageName)
+                        if (microModuleList == null) {
+                            microModuleList = new ArrayList<>()
+                            microModulePackageNameMap.put(packageName, microModuleList)
+                        }
+                        microModuleList.add(microModule.name)
+                    }
+                }
+            }
+        }
     }
 
 }

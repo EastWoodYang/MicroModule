@@ -53,7 +53,7 @@ class ProductFlavorInfo {
         if (inputList == null || inputList.size() == 0) {
             return
         }
-        List<Integer> combination = new ArrayList<Integer>();
+        List<Integer> combination = new ArrayList<Integer>()
         int n = inputList.size();
         for (int i = 0; i < n; i++) {
             combination.add(0);

@@ -53,8 +53,10 @@ class MicroModulePlugin implements Plugin<Project> {
         @Override
         void afterExecute(Task task, TaskState taskState) {
             if (task instanceof AndroidJavaCompile && taskState.failure) {
-                println '\n* MicroModule Tip: The MicroModule which the classes or resources belong to may not be dependent.\n' +
-                        '============================================================================================='
+                if(taskState.failure.getCause().getMessage().startsWith("Compilation failed;")) {
+                    println '\n* MicroModule Tip: The MicroModule which the classes or resources belong to may not be dependent or included.\n' +
+                            '============================================================================================================='
+                }
             }
         }
     }
@@ -827,7 +829,7 @@ class MicroModulePlugin implements Plugin<Project> {
         def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
         def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
         if (packageResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
+            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
             packageResourcesTask.doLast {
                 microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
             }
@@ -838,7 +840,7 @@ class MicroModulePlugin implements Plugin<Project> {
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
                 if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, buildType, productFlavor)
+                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
                 }
                 microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
             }
