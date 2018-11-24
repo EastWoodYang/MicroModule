@@ -159,7 +159,10 @@ class MicroModulePlugin implements Plugin<Project> {
                             || applyScriptState == APPLY_NORMAL_MICRO_MODULE_SCRIPT
                             || applyScriptState == APPLY_EXPORT_MICRO_MODULE_SCRIPT) {
                         return
-                    } else if (it instanceof ProjectDependency && currentMicroModule == null) {
+                    } else if (currentMicroModule == null && (it instanceof ProjectDependency
+                            || configuration.name.startsWith('test')
+                            || configuration.name.startsWith('androidTest')
+                            || it.group == 'com.android.tools.lint')) {
                         return
                     }
 
@@ -223,6 +226,8 @@ class MicroModulePlugin implements Plugin<Project> {
                 }
             } else if (startTaskState == ASSEMBLE_OR_GENERATE) {
                 if (microModule.useMavenArtifact) {
+                    checkMicroModuleMavenArtifact(microModule.name)
+
                     if (!microModule.addDependency) {
                         MavenArtifact mavenArtifact = microModule.mavenArtifact
                         result = mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version
@@ -283,22 +288,16 @@ class MicroModulePlugin implements Plugin<Project> {
                             hasExportMainMicroModule = true
                         }
 
-                        if (microModule.addDependency || microModule.applyScript) return
-
                         if (microModule.useMavenArtifact) {
+                            checkMicroModuleMavenArtifact(it)
+                            if (microModule.addDependency) return
+
                             MavenArtifact mavenArtifact = microModule.mavenArtifact
                             project.dependencies.add('api', mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version)
                             microModule.addDependency = true
-                            microModuleInfo.dependencyGraph.bfsDistance(it).each {
-                                if(it.value == null || it.value == 0) return
-
-                                MicroModule childMicroModule = microModuleInfo.getMicroModule(it.key)
-                                if (!childMicroModule.useMavenArtifact) {
-                                    throw new GradleException("MicroModule '${childMicroModule.name}' should use maven artifact.")
-                                }
-                                childMicroModule.addDependency = true
-                            }
                         } else {
+                            if(microModule.applyScript) return
+
                             addMicroModuleSourceSet(microModule)
                             applyMicroModuleScript(microModule)
                             microModule.applyScript = true
@@ -315,9 +314,12 @@ class MicroModulePlugin implements Plugin<Project> {
                 }
             } else if (startTaskState == UPLOAD_AAR) {
                 applyScriptState = APPLY_UPLOAD_MICRO_MODULE_SCRIPT
-                addMicroModuleSourceSet(microModuleInfo.mainMicroModule)
-                createUploadMicroModuleAarTask(microModuleInfo.mainMicroModule)
-                applyMicroModuleScript(microModuleInfo.mainMicroModule)
+                MicroModule mainMicroModule = microModuleInfo.mainMicroModule
+                checkMicroModuleMavenArtifact(mainMicroModule.name)
+
+                addMicroModuleSourceSet(mainMicroModule)
+                createUploadMicroModuleAarTask(mainMicroModule)
+                applyMicroModuleScript(mainMicroModule)
             } else {
                 applyScriptState = APPLY_NORMAL_MICRO_MODULE_SCRIPT
                 microModuleInfo.includeMicroModules.each {
@@ -350,7 +352,7 @@ class MicroModulePlugin implements Plugin<Project> {
                 generateR()
             }
 
-            if (!microModuleExtension.codeCheckEnabled) {
+            if (microModuleExtension.codeCheckEnabled) {
                 project.gradle.taskGraph.whenReady {
                     BaseExtension extension = (BaseExtension) project.extensions.getByName("android")
                     def taskNamePrefix = extension instanceof LibraryExtension ? 'package' : 'merge'
@@ -375,9 +377,19 @@ class MicroModulePlugin implements Plugin<Project> {
                     }
                 }
             }
-
         }
+    }
 
+    def checkMicroModuleMavenArtifact(String name) {
+        microModuleInfo.dependencyGraph.bfsDistance(name).each {
+            if(it.value == null || it.value == 0) return
+
+            MicroModule childMicroModule = microModuleInfo.getMicroModule(it.key)
+            if (!childMicroModule.useMavenArtifact) {
+                throw new GradleException("MicroModule '${childMicroModule.name}' should use maven artifact.")
+            }
+            childMicroModule.addDependency = true
+        }
     }
 
     def generateAndroidManifest() {

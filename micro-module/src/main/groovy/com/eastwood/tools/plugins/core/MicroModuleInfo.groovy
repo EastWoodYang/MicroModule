@@ -9,14 +9,11 @@ class MicroModuleInfo {
     MicroModule mainMicroModule
     List<MicroModule> includeMicroModules
 
-    Map<String, List<String>> microModuleDependency
-
     Digraph<String> dependencyGraph
 
     MicroModuleInfo(Project project) {
         this.project = project
         this.includeMicroModules = new ArrayList<>()
-        microModuleDependency = new HashMap<>()
         dependencyGraph = new Digraph<String>()
 
         MicroModule microModule = Utils.buildMicroModule(project, ':main')
@@ -52,10 +49,6 @@ class MicroModuleInfo {
         return null
     }
 
-    List<String> getMicroModuleDependency(String name) {
-        return microModuleDependency.get(name)
-    }
-
     void setMicroModuleDependency(String target, String dependency) {
         MicroModule dependencyMicroModule = getMicroModule(dependency)
         if(dependencyMicroModule == null) {
@@ -70,26 +63,16 @@ class MicroModuleInfo {
         if(!dependencyGraph.isDag()) {
             throw new GradleException("Circular dependency between MicroModule '${target}' and '${dependency}'.")
         }
-        List<String> dependencyList = microModuleDependency.get(target)
-        if (dependencyList == null) {
-            dependencyList = new ArrayList<>()
-            dependencyList.add(dependency)
-            microModuleDependency.put(target, dependencyList)
-        } else {
-            if (!dependencyList.contains(dependency)) {
-                dependencyList.add(dependency)
-            }
-        }
     }
 
-    boolean isMicroModuleIncluded(String name) {
-        boolean included = false
-        includeMicroModules.each {
-            if (it.name == name) {
-                included = true
+    boolean hasDependency(String target, String dependency) {
+        Map<String, Integer> bfsDistance = dependencyGraph.bfsDistance(target)
+        for(String key: bfsDistance.keySet()) {
+            if(key == dependency) {
+                return bfsDistance.get(key) != null
             }
         }
-        return included
+        return false
     }
 
 }

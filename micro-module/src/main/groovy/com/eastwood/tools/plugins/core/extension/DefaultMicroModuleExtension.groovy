@@ -12,7 +12,7 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     OnMicroModuleListener onMicroModuleListener
     OnMavenArtifactListener onMavenArtifactListener
 
-    boolean codeCheckEnabled
+    boolean codeCheckEnabled = true
 
     DefaultMicroModuleExtension(Project project) {
         this.project = project

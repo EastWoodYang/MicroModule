@@ -109,7 +109,7 @@ class MicroModuleCodeCheck {
                 def find = matcher.group()
                 def name = find.substring(find.indexOf("/") + 1)
                 def from = resourcesMap.get(name)
-                if (from != null && microModuleName != from && !isReference(microModuleName, from)) {
+                if (from != null && microModuleName != from && !microModuleInfo.hasDependency(microModuleName, from)) {
                     List<Number> lines = textLines.findIndexValues { it.contains(find) }
                     lines.each {
                         def lineIndex = it.intValue()
@@ -216,7 +216,7 @@ class MicroModuleCodeCheck {
                     from = classesMap.get(name)
                 }
 
-                if (from != null && microModuleName != from && !isReference(microModuleName, from)) {
+                if (from != null && microModuleName != from && !microModuleInfo.hasDependency(microModuleName, from)) {
                     List<Number> lines = textLines.findIndexValues { it.contains(find) }
                     lines.each {
                         def lineIndex = it.intValue()
@@ -238,8 +238,6 @@ class MicroModuleCodeCheck {
         }
     }
 
-    // ----------------------------------------------------------------------------------------
-
     String getMicroModuleName(absolutePath) {
         String moduleName = absolutePath.replace(projectPath, "")
         moduleName = moduleName.substring(0, moduleName.indexOf(ResourceMerged.SRC))
@@ -249,31 +247,6 @@ class MicroModuleCodeCheck {
             moduleName = moduleName.replaceAll("/", ":")
         }
         return moduleName
-    }
-
-    boolean isReference(String microModuleName, String from) {
-        List<String> original = new ArrayList<>()
-        original.add(microModuleName)
-        return isReference(microModuleName, from, original)
-    }
-
-    boolean isReference(String microModuleName, String from, List<String> original) {
-        List<String> referenceList = microModuleInfo.microModuleDependency.get(microModuleName)
-        if (referenceList == null) return false
-        if (referenceList.contains(from)) {
-            return true
-        }
-        for (int i = 0; i < referenceList.size(); i++) {
-            if (original.contains(referenceList[i])) {
-                continue
-            } else {
-                original.add(referenceList[i])
-            }
-            if (isReference(referenceList[i], from, original)) {
-                return true
-            }
-        }
-        return false
     }
 
     private MicroManifest getMicroManifest() {
