@@ -27,7 +27,7 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
     void export(String... microModulePaths) {
         if(onMicroModuleListener == null) return
 
-        onMicroModuleListener.exportMicroModule(microModulePaths)
+        onMicroModuleListener.addExportMicroModule(microModulePaths)
     }
 
     @Override
@@ -38,9 +38,9 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
         for (int i = 0; i < size; i++) {
             MicroModule microModule = Utils.buildMicroModule(project, microModulePaths[i])
             if (microModule == null) {
-                throw new GradleException("MicroModule with path ':${microModulePaths[i]}' could not be found in ${project.getDisplayName()}.")
+                throw new GradleException("MicroModule with path '${microModulePaths[i]}' could not be found in ${project.getDisplayName()}.")
             }
-            onMicroModuleListener.addMicroModule(microModule, false)
+            onMicroModuleListener.addIncludeMicroModule(microModule, false)
         }
     }
 
@@ -50,9 +50,9 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
 
         MicroModule microModule = Utils.buildMicroModule(project, microModulePath)
         if (microModule == null) {
-            throw new GradleException("MicroModule with path ':${microModulePath}' could not be found in ${project.getDisplayName()}.")
+            throw new GradleException("MicroModule with path '${microModulePath}' could not be found in ${project.getDisplayName()}.")
         }
-        onMicroModuleListener.addMicroModule(microModule, true)
+        onMicroModuleListener.addIncludeMicroModule(microModule, true)
     }
 
     @Override

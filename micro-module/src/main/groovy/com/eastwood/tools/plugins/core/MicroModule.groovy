@@ -1,7 +1,6 @@
 package com.eastwood.tools.plugins.core
 
 import com.eastwood.tools.plugins.core.extension.MavenArtifact
-import com.eastwood.tools.plugins.core.extension.MavenRepository
 
 class MicroModule {
 
@@ -11,7 +10,7 @@ class MicroModule {
     boolean useMavenArtifact
     MavenArtifact mavenArtifact
 
-    boolean applyScript
+    boolean appliedScript
     boolean addDependency
 
 }

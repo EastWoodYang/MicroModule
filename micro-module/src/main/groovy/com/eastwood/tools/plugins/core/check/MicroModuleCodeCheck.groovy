@@ -160,7 +160,7 @@ class MicroModuleCodeCheck {
         Map<String, ResourceFile> lastModifiedClassesMap = microManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
         microModuleInfo.includeMicroModules.each {
-            MicroModule microModule = it
+            MicroModule microModule = it.value
             combinedProductFlavors.each {
                 File javaDir = new File(microModule.microModuleDir, "/src/${it}/java")
                 getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
@@ -331,7 +331,7 @@ class MicroModuleCodeCheck {
     private String initMicroModulePackageName() {
         microModulePackageNameMap = new HashMap<>()
         microModuleInfo.includeMicroModules.each {
-            MicroModule microModule = it
+            MicroModule microModule = it.value
             boolean find = false
             List<String> flavorList = productFlavorInfo.combinedProductFlavorsMap.get(productFlavor)
             if (flavorList != null && !flavorList.isEmpty()) {

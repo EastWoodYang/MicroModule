@@ -7,13 +7,15 @@ class MicroModuleInfo {
 
     Project project
     MicroModule mainMicroModule
-    List<MicroModule> includeMicroModules
+    Map<String, MicroModule> includeMicroModules
+    Map<String, String> exportMicroModules
 
     Digraph<String> dependencyGraph
 
     MicroModuleInfo(Project project) {
         this.project = project
-        this.includeMicroModules = new ArrayList<>()
+        this.includeMicroModules = new HashMap<>()
+        this.exportMicroModules = new HashMap<>()
         dependencyGraph = new Digraph<String>()
 
         MicroModule microModule = Utils.buildMicroModule(project, ':main')
@@ -27,26 +29,23 @@ class MicroModuleInfo {
             throw new GradleException("main MicroModule cannot be null.")
         }
         this.mainMicroModule = microModule
-        addMicroModule(microModule)
+        addIncludeMicroModule(microModule)
     }
 
-    void addMicroModule(MicroModule microModule) {
-        for (int i = 0; i < includeMicroModules.size(); i++) {
-            if (includeMicroModules.get(i).name.equals(microModule.name)) {
-                return
-            }
+    void addIncludeMicroModule(MicroModule microModule) {
+        includeMicroModules.add(microModule.name, microModule)
+    }
+
+    void addExportMicroModule(String name) {
+        MicroModule microModule = Utils.buildMicroModule(project, name)
+        if (microModule == null) {
+            throw new GradleException("MicroModule with path '${name}' could not be found in ${project.getDisplayName()}.")
         }
-        includeMicroModules.add(microModule)
+        exportMicroModules.put(name, null)
     }
 
     MicroModule getMicroModule(String name) {
-        for (int i = 0; i < includeMicroModules.size(); i++) {
-            MicroModule microModule = includeMicroModules.get(i)
-            if (includeMicroModules.get(i).name.equals(name)) {
-                return microModule
-            }
-        }
-        return null
+        return includeMicroModules.get(name)
     }
 
     void setMicroModuleDependency(String target, String dependency) {

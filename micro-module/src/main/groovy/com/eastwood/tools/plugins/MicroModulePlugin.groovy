@@ -84,26 +84,27 @@ class MicroModulePlugin implements Plugin<Project> {
 
         @Override
         void buildFinished(BuildResult buildResult) {
+            // generate microModules.xml for MicroModule IDEA plugin.
             def ideaFile = new File(buildResult.gradle.rootProject.rootDir, '.idea')
             if (!ideaFile.exists()) return
 
-            def content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modules>\n"
-            if (buildResult.gradle.rootProject.rootDir)
-                buildResult.gradle.rootProject.allprojects.each {
-                    MicroModulePlugin microModulePlugin = it.plugins.findPlugin('micro-module')
-                    if (microModulePlugin == null) return
+            def microModuleInfo = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<modules>\n"
+            buildResult.gradle.rootProject.allprojects.each {
+                MicroModulePlugin microModulePlugin = it.plugins.findPlugin('micro-module')
+                if (microModulePlugin == null) return
 
-                    def displayName = it.displayName
-                    content += "    <module name=\"" + displayName.substring(displayName.indexOf("'") + 1, displayName.lastIndexOf("'")) + "\" path=\"" + it.projectDir.getCanonicalPath() + "\">\n"
-                    microModulePlugin.microModuleInfo.includeMicroModules.each {
-                        content += "        <microModule name=\"" + it.name + "\" path=\"" + it.microModuleDir.getCanonicalPath() + "\" useMavenArtifact=\"" + it.useMavenArtifact + "\" />\n"
-                    }
-                    content += "    </module>\n"
+                def displayName = it.displayName
+                microModuleInfo += "    <module name=\"" + displayName.substring(displayName.indexOf("'") + 1, displayName.lastIndexOf("'")) + "\" path=\"" + it.projectDir.getCanonicalPath() + "\">\n"
+                microModulePlugin.microModuleInfo.includeMicroModules.each {
+                    MicroModule microModule = it.value
+                    microModuleInfo += "        <microModule name=\"" + microModule.name + "\" path=\"" + microModule.microModuleDir.getCanonicalPath() + "\" useMavenArtifact=\"" + microModule.useMavenArtifact + "\" />\n"
                 }
-            content += "</modules>"
+                microModuleInfo += "    </module>\n"
+            }
+            microModuleInfo += "</modules>"
 
             def microModules = new File(ideaFile, 'microModules.xml')
-            microModules.write(content, 'utf-8')
+            microModules.write(microModuleInfo, 'utf-8')
         }
     }
 
@@ -111,8 +112,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
     String startTaskState = NORMAL
     boolean executeUploadTask
-
-    List<String> microModuleExportList
+    String uploadMicroModuleName
 
     MicroModuleInfo microModuleInfo
     ProductFlavorInfo productFlavorInfo
@@ -120,16 +120,11 @@ class MicroModulePlugin implements Plugin<Project> {
     MicroModule currentMicroModule
     String applyScriptState
 
-    boolean clearOriginSourceSet
-
-    String uploadMicroModuleName
-
     boolean appliedLibraryPlugin
 
     void apply(Project project) {
         this.project = project
         this.microModuleInfo = new MicroModuleInfo(project)
-        this.microModuleExportList = new ArrayList<>()
 
         project.gradle.removeListener(buildListener)
         project.gradle.addBuildListener(buildListener)
@@ -177,26 +172,26 @@ class MicroModulePlugin implements Plugin<Project> {
         microModuleExtension.onMicroModuleListener = new OnMicroModuleListener() {
 
             @Override
-            void addMicroModule(MicroModule microModule, boolean mainMicroModule) {
+            void addIncludeMicroModule(MicroModule microModule, boolean mainMicroModule) {
                 if (startTaskState == UPLOAD_AAR) {
                     if (microModule.name == uploadMicroModuleName) {
                         microModuleInfo.setMainMicroModule(microModule)
                     } else {
-                        microModuleInfo.addMicroModule(microModule)
+                        microModuleInfo.addIncludeMicroModule(microModule)
                     }
                 } else {
                     if (mainMicroModule) {
                         microModuleInfo.setMainMicroModule(microModule)
                     } else {
-                        microModuleInfo.addMicroModule(microModule)
+                        microModuleInfo.addIncludeMicroModule(microModule)
                     }
                 }
             }
 
             @Override
-            void exportMicroModule(String... microModulePaths) {
+            void addExportMicroModule(String... microModulePaths) {
                 microModulePaths.each {
-                    microModuleExportList.add(it)
+                    microModuleInfo.addExportMicroModule(it)
                 }
             }
 
@@ -237,7 +232,7 @@ class MicroModulePlugin implements Plugin<Project> {
                 } else {
                     addMicroModuleSourceSet(microModule)
                     applyMicroModuleScript(microModule)
-                    microModule.applyScript = true
+                    microModule.appliedScript = true
                 }
             }
             return result
@@ -268,8 +263,9 @@ class MicroModulePlugin implements Plugin<Project> {
             }
             applyScriptState = APPLY_INCLUDE_MICRO_MODULE_SCRIPT
             microModuleInfo.includeMicroModules.each {
-                microModuleInfo.dependencyGraph.add(it.name)
-                applyMicroModuleScript(it)
+                MicroModule microModule = it.value
+                microModuleInfo.dependencyGraph.add(microModule.name)
+                applyMicroModuleScript(microModule)
             }
             microModuleExtension.onMavenArtifactListener = null
 
@@ -277,10 +273,10 @@ class MicroModulePlugin implements Plugin<Project> {
             if (startTaskState == ASSEMBLE_OR_GENERATE) {
                 applyScriptState = APPLY_EXPORT_MICRO_MODULE_SCRIPT
                 boolean hasExportMainMicroModule = false
-                boolean isEmpty = microModuleExportList.isEmpty()
+                boolean isEmpty = microModuleInfo.exportMicroModules.isEmpty()
                 List<String> dependencySort = microModuleInfo.dependencyGraph.topSort()
                 dependencySort.each {
-                    if (isEmpty || it in microModuleExportList) {
+                    if (isEmpty || microModuleInfo.exportMicroModules.containsKey(it)) {
                         MicroModule microModule = microModuleInfo.getMicroModule(it)
                         if (microModule == null) {
                             throw new GradleException("MicroModule with path '${it}' could not be found in ${project.getDisplayName()}.")
@@ -298,11 +294,11 @@ class MicroModulePlugin implements Plugin<Project> {
                             project.dependencies.add('api', mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version)
                             microModule.addDependency = true
                         } else {
-                            if(microModule.applyScript) return
+                            if(microModule.appliedScript) return
 
                             addMicroModuleSourceSet(microModule)
                             applyMicroModuleScript(microModule)
-                            microModule.applyScript = true
+                            microModule.appliedScript = true
                         }
                     }
                 }
@@ -325,9 +321,10 @@ class MicroModulePlugin implements Plugin<Project> {
             } else {
                 applyScriptState = APPLY_NORMAL_MICRO_MODULE_SCRIPT
                 microModuleInfo.includeMicroModules.each {
-                    addMicroModuleSourceSet(it)
-                    createUploadMicroModuleAarTask(it)
-                    applyMicroModuleScript(it)
+                    MicroModule microModule = it.value
+                    addMicroModuleSourceSet(microModule)
+                    createUploadMicroModuleAarTask(microModule)
+                    applyMicroModuleScript(microModule)
                 }
             }
 
@@ -339,13 +336,14 @@ class MicroModulePlugin implements Plugin<Project> {
                     addMicroModuleSourceSet(microModuleInfo.mainMicroModule)
                 } else if (startTaskState == ASSEMBLE_OR_GENERATE) {
                     microModuleInfo.includeMicroModules.each {
-                        if (it.applyScript) {
-                            addMicroModuleSourceSet(it)
+                        MicroModule microModule = it.value
+                        if (microModule.appliedScript) {
+                            addMicroModuleSourceSet(microModule)
                         }
                     }
                 } else {
                     microModuleInfo.includeMicroModules.each {
-                        addMicroModuleSourceSet(it)
+                        addMicroModuleSourceSet(it.value)
                     }
                 }
 
@@ -395,7 +393,7 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def generateAndroidManifest() {
-        if ((startTaskState == ASSEMBLE_OR_GENERATE || !microModuleExportList.isEmpty()) && isMainSourceSetEmpty()) {
+        if ((startTaskState == ASSEMBLE_OR_GENERATE || !microModuleInfo.exportMicroModules.isEmpty()) && isMainSourceSetEmpty()) {
             setMainSourceSetManifest()
             return
         }
@@ -465,9 +463,10 @@ class MicroModulePlugin implements Plugin<Project> {
 
         if (startTaskState != UPLOAD_AAR) {
             microModuleInfo.includeMicroModules.each {
-                if (startTaskState == ASSEMBLE_OR_GENERATE && !it.applyScript) return
-                if (it.name == microModuleInfo.mainMicroModule.name) return
-                def microManifestFile = new File(it.microModuleDir, "/src/${variantName}/AndroidManifest.xml")
+                MicroModule microModule = it.value
+                if (startTaskState == ASSEMBLE_OR_GENERATE && !microModule.appliedScript) return
+                if (microModule.name == microModuleInfo.mainMicroModule.name) return
+                def microManifestFile = new File(microModule.microModuleDir, "/src/${variantName}/AndroidManifest.xml")
                 if (microManifestFile.exists()) {
                     invoker.addLibraryManifest(microManifestFile)
                 }
@@ -553,7 +552,6 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def clearOriginSourceSet() {
-        clearOriginSourceSet = true
         clearModuleSourceSet("main")
 
         // buildTypes
@@ -739,7 +737,8 @@ class MicroModulePlugin implements Plugin<Project> {
     def generateMicroModuleResources(packageName, path) {
         def packageNames = []
         microModuleInfo.includeMicroModules.each {
-            def microManifestFile = new File(it.microModuleDir, MAIN_MANIFEST_PATH)
+            MicroModule microModule = it.value
+            def microManifestFile = new File(microModule.microModuleDir, MAIN_MANIFEST_PATH)
             if (!microManifestFile.exists()) {
                 return
             }
