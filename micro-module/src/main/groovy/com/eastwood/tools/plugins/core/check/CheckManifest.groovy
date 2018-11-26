@@ -11,14 +11,14 @@ import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
-class MicroManifest {
+class CheckManifest {
 
     Document document
     Element rootElement
 
     String packageName
-    Map<String, ResourceFile> lastModifiedResourcesMap
-    Map<String, ResourceFile> lastModifiedClassesMap
+    Map<String, MicroModuleFile> lastModifiedResourcesMap
+    Map<String, MicroModuleFile> lastModifiedClassesMap
 
     void load(File sourceFile) {
         if (!sourceFile.exists()) return
@@ -26,12 +26,6 @@ class MicroManifest {
         document = builderFactory.newDocumentBuilder().parse(sourceFile)
         rootElement = document.documentElement
         packageName = rootElement.getAttribute("package")
-    }
-
-    String getPackageName() {
-        if (rootElement == null) return ""
-
-        return rootElement.getAttribute("package")
     }
 
     void setResourcesLastModified(long lastModified) {
@@ -52,7 +46,7 @@ class MicroManifest {
         NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
         for (int i = 0; i < fileNodeList.getLength(); i++) {
             Element fileElement = (Element) fileNodeList.item(i)
-            ResourceFile resourceFile = new ResourceFile()
+            MicroModuleFile resourceFile = new MicroModuleFile()
             resourceFile.name = fileElement.getAttribute("name")
             resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
             resourceFile.path = fileElement.getAttribute("path")
@@ -62,7 +56,7 @@ class MicroManifest {
         return lastModifiedResourcesMap
     }
 
-    Map<String, ResourceFile> getClassesMap() {
+    Map<String, MicroModuleFile> getClassesMap() {
         if (lastModifiedClassesMap != null) return lastModifiedClassesMap
 
         lastModifiedClassesMap = new HashMap<>()
@@ -76,7 +70,7 @@ class MicroManifest {
         NodeList fileNodeList = classesElement.getElementsByTagName("file")
         for (int i = 0; i < fileNodeList.getLength(); i++) {
             Element fileElement = (Element) fileNodeList.item(i)
-            ResourceFile resourceFile = new ResourceFile()
+            MicroModuleFile resourceFile = new MicroModuleFile()
             resourceFile.name = fileElement.getAttribute("name")
             resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
             resourceFile.path = fileElement.getAttribute("path")
@@ -96,7 +90,7 @@ class MicroManifest {
         microModuleXmlTemp.appendChild(resourcesElement)
         if (lastModifiedResourcesMap != null) {
             lastModifiedResourcesMap.each {
-                ResourceFile resourceFile = it.value
+                MicroModuleFile resourceFile = it.value
                 Element fileElement = documentTemp.createElement("file")
                 fileElement.setAttribute("name", resourceFile.name)
                 fileElement.setAttribute("path", resourceFile.path)
@@ -111,7 +105,7 @@ class MicroManifest {
             Element classesElement = documentTemp.createElement("classes")
             microModuleXmlTemp.appendChild(classesElement)
             lastModifiedClassesMap.each {
-                ResourceFile resourceFile = it.value
+                MicroModuleFile resourceFile = it.value
                 Element fileElement = documentTemp.createElement("file")
                 fileElement.setAttribute("name", resourceFile.name)
                 fileElement.setAttribute("path", resourceFile.path)

@@ -6,23 +6,19 @@ import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.GradleScriptException
 import org.gradle.api.Project
-import org.gradle.api.tasks.TaskAction
 import org.w3c.dom.Element
 import org.w3c.dom.NodeList
 
-class MicroModuleCodeCheck {
+class CodeChecker {
 
     Project project
     MicroModuleInfo microModuleInfo
     ProductFlavorInfo productFlavorInfo
 
-    String projectPath
-    File buildDir
-
     String buildType
     String productFlavor
 
-    MicroManifest microManifest
+    CheckManifest checkManifest
     ResourceMerged resourceMerged
 
     String errorMessage = ""
@@ -30,19 +26,15 @@ class MicroModuleCodeCheck {
 
     Map<String, List<String>> microModulePackageNameMap
 
-    MicroModuleCodeCheck(Project project, MicroModuleInfo microModuleInfo, ProductFlavorInfo productFlavorInfo, String buildType, String productFlavor) {
+    CodeChecker(Project project, MicroModuleInfo microModuleInfo, ProductFlavorInfo productFlavorInfo, String buildType, String productFlavor) {
         this.project = project
         this.microModuleInfo = microModuleInfo
         this.productFlavorInfo = productFlavorInfo
         this.buildType = buildType
         this.productFlavor = productFlavor
-        projectPath = project.projectDir.absolutePath
-        buildDir = new File(project.projectDir, "build")
-
-        microManifest = getMicroManifest()
+        this.checkManifest = getModuleCheckManifest()
     }
 
-    @TaskAction
     void checkResources(String mergeTaskName, List<String> combinedProductFlavors) {
         resourceMerged = new ResourceMerged()
         if (!resourceMerged.load(project.projectDir, mergeTaskName)) {
@@ -61,12 +53,12 @@ class MicroModuleCodeCheck {
 
         def manifest = new File(microModuleInfo.mainMicroModule.microModuleDir, "src/main/AndroidManifest.xml")
         String packageName = Utils.getAndroidManifestPackageName(manifest)
-        microManifest.packageName = packageName
-        saveMicroManifest()
+        checkManifest.packageName = packageName
+        saveModuleCheckManifest()
     }
 
     List<File> getModifiedResourcesList(List<NodeList> resourcesNodeList) {
-        Map<String, ResourceFile> lastModifiedResourcesMap = microManifest.getResourcesMap()
+        Map<String, MicroModuleFile> lastModifiedResourcesMap = checkManifest.getResourcesMap()
         List<File> modifiedResourcesList = new ArrayList<>()
         if (resourcesNodeList == null || resourcesNodeList.length == 0) return modifiedResourcesList
 
@@ -79,13 +71,13 @@ class MicroModuleCodeCheck {
                     String filePath = fileElement.getAttribute("path")
                     if (filePath != null && filePath.endsWith(".xml")) {
                         File file = project.file(filePath)
-                        ResourceFile resourceFile = lastModifiedResourcesMap.get(filePath)
+                        MicroModuleFile resourceFile = lastModifiedResourcesMap.get(filePath)
                         def currentModified = file.lastModified()
                         if (resourceFile == null || resourceFile.lastModified.longValue() < currentModified) {
                             modifiedResourcesList.add(file)
 
                             if (resourceFile == null) {
-                                resourceFile = new ResourceFile()
+                                resourceFile = new MicroModuleFile()
                                 resourceFile.name = file.name
                                 resourceFile.path = filePath
                                 resourceFile.microModuleName = getMicroModuleName(filePath)
@@ -136,7 +128,6 @@ class MicroModuleCodeCheck {
         }
     }
 
-    @TaskAction
     void checkClasses(String mergeTaskName, List<String> combinedProductFlavors) {
         List<File> modifiedClassesList = getModifiedClassesList(combinedProductFlavors)
         if (modifiedClassesList.size() == 0) {
@@ -153,11 +144,11 @@ class MicroModuleCodeCheck {
         if (errorMessage != "") {
             throw new GradleScriptException(errorMessage, null)
         }
-        saveMicroManifest()
+        saveModuleCheckManifest()
     }
 
     List<File> getModifiedClassesList(List<String> combinedProductFlavors) {
-        Map<String, ResourceFile> lastModifiedClassesMap = microManifest.getClassesMap()
+        Map<String, MicroModuleFile> lastModifiedClassesMap = checkManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
         microModuleInfo.includeMicroModules.each {
             MicroModule microModule = it.value
@@ -169,18 +160,18 @@ class MicroModuleCodeCheck {
         return modifiedClassesList
     }
 
-    void getModifiedJavaFile(File directory, List<File> modifiedClassesList, Map<String, ResourceFile> lastModifiedClassesMap) {
+    void getModifiedJavaFile(File directory, List<File> modifiedClassesList, Map<String, MicroModuleFile> lastModifiedClassesMap) {
         directory.listFiles().each {
             if (it.isDirectory()) {
                 getModifiedJavaFile(it, modifiedClassesList, lastModifiedClassesMap)
             } else {
                 def currentModified = it.lastModified()
-                ResourceFile resourceFile = lastModifiedClassesMap.get(it.absolutePath)
+                MicroModuleFile resourceFile = lastModifiedClassesMap.get(it.absolutePath)
                 if (resourceFile == null || resourceFile.lastModified.longValue() < currentModified) {
                     modifiedClassesList.add(it)
 
                     if (resourceFile == null) {
-                        resourceFile = new ResourceFile()
+                        resourceFile = new MicroModuleFile()
                         resourceFile.name = it.name
                         resourceFile.path = it.absolutePath
                         resourceFile.microModuleName = getMicroModuleName(it.absolutePath)
@@ -195,8 +186,8 @@ class MicroModuleCodeCheck {
     void handleModifiedClasses(List<File> modifiedClassesList) {
         Map<String, String> resourcesMap = resourceMerged.getResourcesMap()
         Map<String, String> classesMap = new HashMap<>()
-        microManifest.getClassesMap().each {
-            ResourceFile resourceFile = it.value
+        checkManifest.getClassesMap().each {
+            MicroModuleFile resourceFile = it.value
             def path = resourceFile.path
             def name = path.substring(path.indexOf("java") + 5, path.lastIndexOf(".")).replace(File.separator, ".")
             classesMap.put(name, resourceFile.microModuleName)
@@ -250,7 +241,7 @@ class MicroModuleCodeCheck {
     }
 
     String getMicroModuleName(absolutePath) {
-        String moduleName = absolutePath.replace(projectPath, "")
+        String moduleName = absolutePath.replace(project.projectDir.absolutePath, "")
         moduleName = moduleName.substring(0, moduleName.indexOf(ResourceMerged.SRC))
         if (File.separator == "\\") {
             moduleName = moduleName.replaceAll("\\\\", ":")
@@ -260,8 +251,8 @@ class MicroModuleCodeCheck {
         return moduleName
     }
 
-    private MicroManifest getMicroManifest() {
-        MicroManifest microManifest = new MicroManifest()
+    private CheckManifest getModuleCheckManifest() {
+        CheckManifest checkManifest = new CheckManifest()
         StringBuilder stringBuilder = new StringBuilder('build/microModule/code-check/')
         if (productFlavor != null) {
             stringBuilder.append(productFlavor)
@@ -271,13 +262,13 @@ class MicroModuleCodeCheck {
         project.file(stringBuilder.toString()).mkdirs()
         stringBuilder.append('/check-manifest.xml')
         File manifest = project.file(stringBuilder.toString())
-        microManifest.load(manifest)
-        return microManifest
+        checkManifest.load(manifest)
+        return checkManifest
     }
 
-    private MicroManifest saveMicroManifest() {
-        if (microManifest == null) {
-            microManifest = new MicroManifest()
+    private CheckManifest saveModuleCheckManifest() {
+        if (checkManifest == null) {
+            checkManifest = new CheckManifest()
         }
         StringBuilder stringBuilder = new StringBuilder('build/microModule/code-check/')
         if (productFlavor != null) {
@@ -288,7 +279,7 @@ class MicroModuleCodeCheck {
         project.file(stringBuilder.toString()).mkdirs()
         stringBuilder.append('/check-manifest.xml')
         File manifest = project.file(stringBuilder.toString())
-        return microManifest.save(manifest)
+        return checkManifest.save(manifest)
     }
 
     private void handleMicroModuleRAndBuildConfig(String microModuleName, String name, String find, List<String> textLines, String absolutePath) {

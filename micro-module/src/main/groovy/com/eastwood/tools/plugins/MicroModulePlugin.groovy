@@ -11,7 +11,7 @@ import com.eastwood.tools.plugins.core.MicroModule
 import com.eastwood.tools.plugins.core.MicroModuleInfo
 import com.eastwood.tools.plugins.core.ProductFlavorInfo
 import com.eastwood.tools.plugins.core.Utils
-import com.eastwood.tools.plugins.core.check.MicroModuleCodeCheck
+import com.eastwood.tools.plugins.core.check.CodeChecker
 import com.eastwood.tools.plugins.core.extension.*
 import org.gradle.BuildListener
 import org.gradle.BuildResult
@@ -20,7 +20,6 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.execution.TaskExecutionListener
 import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
@@ -156,10 +155,7 @@ class MicroModulePlugin implements Plugin<Project> {
                             || applyScriptState == APPLY_NORMAL_MICRO_MODULE_SCRIPT
                             || applyScriptState == APPLY_EXPORT_MICRO_MODULE_SCRIPT) {
                         return
-                    } else if (currentMicroModule == null && (it instanceof ProjectDependency
-                            || configuration.name.startsWith('test')
-                            || configuration.name.startsWith('androidTest')
-                            || it.group == 'com.android.tools.lint')) {
+                    } else if (currentMicroModule == null && startTaskState == ASSEMBLE_OR_GENERATE) {
                         return
                     }
 
@@ -820,7 +816,7 @@ class MicroModulePlugin implements Plugin<Project> {
     }
 
     def check(taskPrefix, buildType, productFlavor, combinedProductFlavors) {
-        MicroModuleCodeCheck microModuleCodeCheck
+        CodeChecker codeChecker
 
         def buildTypeFirstUp = Utils.upperCase(buildType)
         def productFlavorFirstUp = productFlavor != null ? Utils.upperCase(productFlavor) : ""
@@ -828,9 +824,9 @@ class MicroModulePlugin implements Plugin<Project> {
         def mergeResourcesTaskName = taskPrefix + productFlavorFirstUp + buildTypeFirstUp + "Resources"
         def packageResourcesTask = project.tasks.findByName(mergeResourcesTaskName)
         if (packageResourcesTask != null) {
-            microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
+            codeChecker = new CodeChecker(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
             packageResourcesTask.doLast {
-                microModuleCodeCheck.checkResources(mergeResourcesTaskName, combinedProductFlavors)
+                codeChecker.checkResources(mergeResourcesTaskName, combinedProductFlavors)
             }
         }
 
@@ -838,10 +834,10 @@ class MicroModulePlugin implements Plugin<Project> {
         def compileJavaTask = project.tasks.findByName(compileJavaTaskName)
         if (compileJavaTask != null) {
             compileJavaTask.doLast {
-                if (microModuleCodeCheck == null) {
-                    microModuleCodeCheck = new MicroModuleCodeCheck(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
+                if (codeChecker == null) {
+                    codeChecker = new CodeChecker(project, microModuleInfo, productFlavorInfo, buildType, productFlavor)
                 }
-                microModuleCodeCheck.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
+                codeChecker.checkClasses(mergeResourcesTaskName, combinedProductFlavors)
             }
         }
     }

@@ -1,6 +1,6 @@
 package com.eastwood.tools.plugins.core.check
 
-class ResourceFile {
+class MicroModuleFile {
     String path
     String name
     Long lastModified

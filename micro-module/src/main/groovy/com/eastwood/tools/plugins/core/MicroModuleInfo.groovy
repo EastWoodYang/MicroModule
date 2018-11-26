@@ -33,7 +33,7 @@ class MicroModuleInfo {
     }
 
     void addIncludeMicroModule(MicroModule microModule) {
-        includeMicroModules.add(microModule.name, microModule)
+        includeMicroModules.put(microModule.name, microModule)
     }
 
     void addExportMicroModule(String name) {
