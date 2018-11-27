@@ -26,19 +26,19 @@ Rebuild multiple complete module structures within the module. Each complete mod
 
 	dependencies {}
 
-Apply MicroModule plugin **must before** apply android plugin, and `microModule{}` should between `android{}` and `dependencies{}`.
+Apply MicroModule plugin **must before** apply android plugin, and `microModule {}` should between `android {}` and `dependencies {}`.
 
-The MicroModule plugin defines the following methods in in `microModule{}`:
-* **`codeCheckEnabled`**---`boolean`
+The MicroModule plugin defines the following methods in `microModule {}`:
+* **`codeCheckEnabled`**--`boolean`
 Prevent two non-dependent MicroModules from generating references. Use `codeCheckEnabled` to declared code check enable state, 'true' as default.
 
-* **`includeMain`**---`String`
+* **`includeMain`**--`String`
 Declare main MicroModule, affects the package name of the generated R class, and the AndroidManifest.xml merge. if not declared, will be declared as default if file with name `main` exist.
 
-* **`include`**---`String[]`
+* **`include`**--`String[]`
 Declare other MicroModules.
 
-* **`export`**---`String[]`
+* **`export`**--`String[]`
 Use `export` to decide which MicroModules participate in the compilation of the module. if not declared, all MicroModules which decleard by `include`, will participate in the compilation of the module.
 
 Example 1. build.gradle file of library module in the dome.
@@ -52,7 +52,7 @@ Example 1. build.gradle file of library module in the dome.
 	}
 
 #### Declare MicroModule dependencies in MicroModule build.gradle:
-The MicroModule plugin provides a simple method for declaring dependencies on other MicroModules in `dependencies{}`.
+The MicroModule plugin provides a simple method for declaring dependencies on other MicroModules in `dependencies {}`.
 
 	dependencies {
 	    implementation microModule(':p_common')
@@ -61,7 +61,7 @@ The MicroModule plugin provides a simple method for declaring dependencies on ot
 
 The method **`microModule`** has a only `string` parameter, the name of the MicroModule.
 
-You can also declare dependencies on the other third party libraries in `dependencies{}`.
+You can also declare dependencies on the other third party libraries in `dependencies {}`.
 
 Example 2. build.gradle file of main MicroModule in the demo.
 
@@ -101,17 +101,17 @@ After publishing MicroModule AAR file to Maven repository, you can use it as a d
 Example 4. the complete example of the MicroModule build.gradle file.
 
 	microModule {
-		useMavenArtifact true
-		mavenArtifact {
-			groupId 'com.eastwood.demo'
-			artifactId 'library-base'
-			version '1.0.0-SNAPSHOT'
+	    useMavenArtifact true
+	    mavenArtifact {
+	        groupId 'com.eastwood.demo'
+	        artifactId 'library-base'
+	        version '1.0.0-SNAPSHOT'
 
-			repository {
-				url "***"
-				authentication(userName: '***', password: '***')
-			}
-		}
+	        repository {
+	            url "***"
+	            authentication(userName: '***', password: '***')
+	        }
+	    }
 	}
 
 	dependencies {
@@ -127,13 +127,13 @@ Provides an action which allow you quickly create MicroModule.
 * You will find "New Project/Module with MicroModule..." action in [File]->[New] group.
 * Right click at project or module dir, in [New] group, you will find "MicroModule" action.
 
-<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/2.png'/>
+<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/3.png'/>
 
 **Install Step**:
 1. open [File] -> [Settings...] -> [plugins] -> [Browse repositories...]
 2. and search name **MicroModule**
 
-<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/3.png'/>
+<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/4.png'/>
 
 **Plugin detail**:
 
