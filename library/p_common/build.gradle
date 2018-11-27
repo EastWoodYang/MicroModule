@@ -12,8 +12,6 @@ microModule {
             authentication(userName: '***', password: '***')
         }
     }
-
-
 }
 
 dependencies {

@@ -12,10 +12,8 @@ microModule {
             authentication(userName: '***', password: '***')
         }
     }
-
-
 }
 
 dependencies {
-    implementation fileTree(dir: 'p_utils/libs', include: ['*.jar'])
+
 }

@@ -52,7 +52,7 @@ class MicroModuleInfo {
         MicroModule dependencyMicroModule = getMicroModule(dependency)
         if(dependencyMicroModule == null) {
             if(Utils.buildMicroModule(project, dependency) != null) {
-                throw new GradleException("MicroModule '${microModule.name}' dependency MicroModle '${name}', but its not included.")
+                throw new GradleException("MicroModule '${target}' dependency MicroModle '${dependency}', but its not included.")
             } else {
                 throw new GradleException("MicroModule with path '${path}' could not be found in ${project.getDisplayName()}.")
             }

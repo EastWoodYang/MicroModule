@@ -1,13 +1,12 @@
-package com.eastwood.demo.library.common;
+package com.eastwood.demo.application.common;
 
 /**
  * @author eastwood
- * createDate: 2018-11-09
+ * createDate: 2018-11-26
  */
 public class Common {
 
     void test() {
 
     }
-
 }

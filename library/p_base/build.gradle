@@ -11,9 +11,7 @@ microModule {
             url "***"
             authentication(userName: '***', password: '***')
         }
-
     }
-
 }
 
 dependencies {

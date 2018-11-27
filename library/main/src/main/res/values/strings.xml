@@ -1,4 +1,4 @@
 <resources>
-    <string name="library_name">Library</string>
-    <!--<string name="message">@string/test_code_check</string>-->
+    <!--can't use [@string/test_code_check_utils] which from microModule ':p_utils'.-->
+    <!--<string name="test_code">@string/test_code_check_utils</string>-->
 </resources>

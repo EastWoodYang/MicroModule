@@ -2,6 +2,7 @@ package com.eastwood.tools.plugins
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.LibraryExtension
+import com.android.build.gradle.tasks.ProcessAndroidResources
 import com.android.build.gradle.tasks.factory.AndroidJavaCompile
 import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
@@ -51,10 +52,17 @@ class MicroModulePlugin implements Plugin<Project> {
 
         @Override
         void afterExecute(Task task, TaskState taskState) {
-            if (task instanceof AndroidJavaCompile && taskState.failure) {
-                if(taskState.failure.getCause().getMessage().startsWith("Compilation failed;")) {
-                    println '\n* MicroModule Tip: The MicroModule which the classes or resources belong to may not be dependent or included.\n' +
-                            '============================================================================================================='
+            if (taskState.failure) {
+                if(task instanceof AndroidJavaCompile) {
+                    if (taskState.failure.getCause().getMessage().startsWith("Compilation failed;")) {
+                        println '\n* MicroModule Tip: The MicroModule which the classes or resources belong to may not be dependent or included.\n' +
+                                '============================================================================================================='
+                    }
+                } else if(task instanceof ProcessAndroidResources) {
+                    if (taskState.failure.getCause().getMessage().startsWith("Android resource linking failed")) {
+                        println '\n* MicroModule Tip: The MicroModule which the resources belong to may not be dependent or included.\n' +
+                                '=================================================================================================='
+                    }
                 }
             }
         }
@@ -157,6 +165,8 @@ class MicroModulePlugin implements Plugin<Project> {
                         return
                     } else if (currentMicroModule == null && startTaskState == ASSEMBLE_OR_GENERATE) {
                         return
+                    } else if(it.group != null && it.group.startsWith("com.android.tools")) {
+                        return
                     }
 
                     configuration.dependencies.remove(it)
@@ -182,6 +192,15 @@ class MicroModulePlugin implements Plugin<Project> {
                         microModuleInfo.addIncludeMicroModule(microModule)
                     }
                 }
+
+                if(productFlavorInfo == null) {
+                    productFlavorInfo = new ProductFlavorInfo(project)
+                    clearOriginSourceSet()
+                    if(microModuleInfo.mainMicroModule != null) {
+                        addMicroModuleSourceSet(microModuleInfo.mainMicroModule)
+                    }
+                }
+                addMicroModuleSourceSet(microModule)
             }
 
             @Override
@@ -244,7 +263,9 @@ class MicroModulePlugin implements Plugin<Project> {
 
             appliedLibraryPlugin = project.pluginManager.hasPlugin('com.android.library')
 
-            productFlavorInfo = new ProductFlavorInfo(project)
+            if(productFlavorInfo == null) {
+                productFlavorInfo = new ProductFlavorInfo(project)
+            }
 
             microModuleExtension.onMavenArtifactListener = new OnMavenArtifactListener() {
                 @Override
@@ -302,10 +323,6 @@ class MicroModulePlugin implements Plugin<Project> {
                 if (!hasExportMainMicroModule) {
                     throw new GradleException("the main MicroModule '${microModuleInfo.mainMicroModule.name}' is not in the export list.")
                 }
-
-                if (microModuleInfo.mainMicroModule.useMavenArtifact) {
-                    excludeBuildConfig()
-                }
             } else if (startTaskState == UPLOAD_AAR) {
                 applyScriptState = APPLY_UPLOAD_MICRO_MODULE_SCRIPT
                 MicroModule mainMicroModule = microModuleInfo.mainMicroModule
@@ -314,6 +331,10 @@ class MicroModulePlugin implements Plugin<Project> {
                 addMicroModuleSourceSet(mainMicroModule)
                 createUploadMicroModuleAarTask(mainMicroModule)
                 applyMicroModuleScript(mainMicroModule)
+
+                if (microModuleInfo.mainMicroModule.useMavenArtifact) {
+                    excludeBuildConfig()
+                }
             } else {
                 applyScriptState = APPLY_NORMAL_MICRO_MODULE_SCRIPT
                 microModuleInfo.includeMicroModules.each {
@@ -396,12 +417,12 @@ class MicroModulePlugin implements Plugin<Project> {
         mergeAndroidManifest("main")
 
         productFlavorInfo.buildTypes.each {
-            mergeAndroidManifest(it.name)
+            mergeAndroidManifest(it)
         }
 
         if (!productFlavorInfo.singleDimension) {
             productFlavorInfo.productFlavors.each {
-                mergeAndroidManifest(it.name)
+                mergeAndroidManifest(it)
             }
         }
 
@@ -410,7 +431,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             def productFlavor = it
             productFlavorInfo.buildTypes.each {
-                mergeAndroidManifest(productFlavor + Utils.upperCase(it.name))
+                mergeAndroidManifest(productFlavor + Utils.upperCase(it))
             }
         }
 
@@ -419,7 +440,7 @@ class MicroModulePlugin implements Plugin<Project> {
         mergeAndroidManifest(androidTest + "Debug")
         if (!productFlavorInfo.singleDimension) {
             productFlavorInfo.productFlavors.each {
-                mergeAndroidManifest(androidTest + Utils.upperCase(it.name))
+                mergeAndroidManifest(androidTest + Utils.upperCase(it))
             }
         }
         productFlavorInfo.combinedProductFlavors.each {
@@ -496,12 +517,12 @@ class MicroModulePlugin implements Plugin<Project> {
         addVariantSourceSet(microModule, "main")
 
         productFlavorInfo.buildTypes.each {
-            addVariantSourceSet(microModule, it.name)
+            addVariantSourceSet(microModule, it)
         }
 
         if (!productFlavorInfo.singleDimension) {
             productFlavorInfo.productFlavors.each {
-                addVariantSourceSet(microModule, it.name)
+                addVariantSourceSet(microModule, it)
             }
         }
 
@@ -509,7 +530,7 @@ class MicroModulePlugin implements Plugin<Project> {
             addVariantSourceSet(microModule, it)
             def flavorName = it
             productFlavorInfo.buildTypes.each {
-                addVariantSourceSet(microModule, flavorName + Utils.upperCase(it.name))
+                addVariantSourceSet(microModule, flavorName + Utils.upperCase(it))
             }
         }
 
@@ -520,7 +541,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (testType == "test") {
                 productFlavorInfo.buildTypes.each {
-                    addVariantSourceSet(microModule, testType + Utils.upperCase(it.name))
+                    addVariantSourceSet(microModule, testType + Utils.upperCase(it))
                 }
             } else {
                 addVariantSourceSet(microModule, testType + "Debug")
@@ -528,7 +549,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (!productFlavorInfo.singleDimension) {
                 productFlavorInfo.productFlavors.each {
-                    addVariantSourceSet(microModule, testType + Utils.upperCase(it.name))
+                    addVariantSourceSet(microModule, testType + Utils.upperCase(it))
                 }
             }
 
@@ -538,7 +559,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
                 if (testType == "test") {
                     productFlavorInfo.buildTypes.each {
-                        addVariantSourceSet(microModule, productFlavorName + Utils.upperCase(it.name))
+                        addVariantSourceSet(microModule, productFlavorName + Utils.upperCase(it))
                     }
                 } else {
                     addVariantSourceSet(microModule, productFlavorName + "Debug")
@@ -552,12 +573,12 @@ class MicroModulePlugin implements Plugin<Project> {
 
         // buildTypes
         productFlavorInfo.buildTypes.each {
-            clearModuleSourceSet(it.name)
+            clearModuleSourceSet(it)
         }
 
         if (!productFlavorInfo.singleDimension) {
             productFlavorInfo.productFlavors.each {
-                clearModuleSourceSet(it.name)
+                clearModuleSourceSet(it)
             }
         }
 
@@ -565,7 +586,7 @@ class MicroModulePlugin implements Plugin<Project> {
             clearModuleSourceSet(it)
             def flavorName = it
             productFlavorInfo.buildTypes.each {
-                clearModuleSourceSet(flavorName + Utils.upperCase(it.name))
+                clearModuleSourceSet(flavorName + Utils.upperCase(it))
             }
         }
 
@@ -576,7 +597,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (testType == "test") {
                 productFlavorInfo.buildTypes.each {
-                    clearModuleSourceSet(testType + Utils.upperCase(it.name))
+                    clearModuleSourceSet(testType + Utils.upperCase(it))
                 }
             } else {
                 clearModuleSourceSet(testType + "Debug")
@@ -584,7 +605,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             if (!productFlavorInfo.singleDimension) {
                 productFlavorInfo.productFlavors.each {
-                    clearModuleSourceSet(testType + Utils.upperCase(it.name))
+                    clearModuleSourceSet(testType + Utils.upperCase(it))
                 }
             }
 
@@ -594,7 +615,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
                 if (testType == "test") {
                     productFlavorInfo.buildTypes.each {
-                        clearModuleSourceSet(productFlavorName + Utils.upperCase(it.name))
+                        clearModuleSourceSet(productFlavorName + Utils.upperCase(it))
                     }
                 } else {
                     clearModuleSourceSet(productFlavorName + "Debug")
@@ -663,13 +684,13 @@ class MicroModulePlugin implements Plugin<Project> {
         def microManifestFile = new File(microModuleInfo.mainMicroModule.microModuleDir, MAIN_MANIFEST_PATH)
         def mainPackageName = Utils.getAndroidManifestPackageName(microManifestFile)
         productFlavorInfo.buildTypes.each {
-            def buildType = it.name
+            def buildType = it
             if (productFlavorInfo.productFlavors.size() == 0) {
                 generateRByProductFlavorBuildType(mainPackageName, buildType, null)
             } else {
                 if (!productFlavorInfo.singleDimension) {
                     productFlavorInfo.productFlavors.each {
-                        generateRByProductFlavorBuildType(mainPackageName, buildType, it.name)
+                        generateRByProductFlavorBuildType(mainPackageName, buildType, it)
                     }
                 }
 
@@ -677,7 +698,7 @@ class MicroModulePlugin implements Plugin<Project> {
                     generateRByProductFlavorBuildType(mainPackageName, buildType, it)
                     def combinedProductFlavor = it
                     productFlavorInfo.buildTypes.each {
-                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + Utils.upperCase(it.name))
+                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + Utils.upperCase(it))
                     }
                 }
             }

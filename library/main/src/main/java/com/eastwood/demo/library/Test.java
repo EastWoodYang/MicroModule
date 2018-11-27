@@ -10,6 +10,6 @@ public class Test {
 
     public void get(Context context) {
         // can't use [R.string.test_code_check] which from microModule ':p_utils'.
-//        context.getString(R.string.test_code_check);
+//        context.getString(R.string.test_code_check_utils);
     }
 }

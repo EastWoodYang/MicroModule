@@ -1,4 +1,5 @@
-<manifest package="com.eastwood.demo.library.base">
+<manifest package="com.eastwood.demo.library">
 
     <application></application>
+
 </manifest>
