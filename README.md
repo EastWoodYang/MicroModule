@@ -46,7 +46,7 @@ The MicroModule plugin defines the following methods in `microModule {}`:
     Use `export` to decide which MicroModules participate in the compilation of the module. if not declared, all MicroModules which decleard by `include`, will participate in the compilation of the module.
 
 
-Example 1. build.gradle file of library module in the dome.
+*Example 1. build.gradle file of library module in the dome.*
 
 	microModule {
 	    codeCheckEnabled true
@@ -68,7 +68,7 @@ The method **`microModule`** has a only `string` parameter, the name of the Micr
 
 You can also declare dependencies on the other third party libraries in `dependencies {}`.
 
-Example 2. build.gradle file of main MicroModule in the demo.
+*Example 2. build.gradle file of main MicroModule in the demo.*
 
 	dependencies {
 	    implementation fileTree(dir: 'main/libs', include: ['*.jar'])
@@ -83,7 +83,7 @@ The MicroModule plugin adds support for compiling single MicroModule into an And
 
 The MicroModule plugin provides a factory method for creating a maven artifact. After you add configuration option of creating a maven artifact and run gradle sync, the MicroModule plugin will create a relatived upload task which publishing AAR file to Maven repository.
 
-Example 3. Creating a maven artifact.
+*Example 3. Creating a maven artifact.*
 
 	microModule {
 	    mavenArtifact {
@@ -103,7 +103,7 @@ Example 3. Creating a maven artifact.
 
 After publishing MicroModule AAR file to Maven repository, you can use it as a dependency instead of the local source code. All you have to do is add the attribute `useMavenArtifact` and set it to true.
 
-Example 4. the complete example of the MicroModule build.gradle file.
+*Example 4. the complete example of the MicroModule build.gradle file.*
 
 	microModule {
 	    useMavenArtifact true
