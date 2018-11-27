@@ -30,25 +30,30 @@ Apply MicroModule plugin **must before** apply android plugin, and `microModule 
 
 The MicroModule plugin defines the following methods in `microModule {}`:
 * **`codeCheckEnabled`**--`boolean`
-Prevent two non-dependent MicroModules from generating references. Use `codeCheckEnabled` to declared code check enable state, 'true' as default.
+
+    Prevent two non-dependent MicroModules from generating references. Use `codeCheckEnabled` to declared code check enable state, 'true' as default.
 
 * **`includeMain`**--`String`
-Declare main MicroModule, affects the package name of the generated R class, and the AndroidManifest.xml merge. if not declared, will be declared as default if file with name `main` exist.
+
+    Declare main MicroModule, affects the package name of the generated R class, and the AndroidManifest.xml merge. if not declared, will be declared as default if file with name `main` exist.
 
 * **`include`**--`String[]`
-Declare other MicroModules.
+
+    Declare other MicroModules.
 
 * **`export`**--`String[]`
-Use `export` to decide which MicroModules participate in the compilation of the module. if not declared, all MicroModules which decleard by `include`, will participate in the compilation of the module.
+
+    Use `export` to decide which MicroModules participate in the compilation of the module. if not declared, all MicroModules which decleard by `include`, will participate in the compilation of the module.
+
 
 Example 1. build.gradle file of library module in the dome.
 
 	microModule {
-	  codeCheckEnabled true
-	  include ':p_base'
-	  include ':p_common'
-	  include ':p_utils'
-	  export ':main'
+	    codeCheckEnabled true
+	    include ':p_base'
+	    include ':p_common'
+	    include ':p_utils'
+	    export ':main'
 	}
 
 #### Declare MicroModule dependencies in MicroModule build.gradle:
@@ -81,16 +86,16 @@ The MicroModule plugin provides a factory method for creating a maven artifact. 
 Example 3. Creating a maven artifact.
 
 	microModule {
-		mavenArtifact {
-			groupId 'com.eastwood.demo'
-			artifactId 'library-base'
-			version '1.0.0-SNAPSHOT'
+	    mavenArtifact {
+	        groupId 'com.eastwood.demo'
+	        artifactId 'library-base'
+	        version '1.0.0-SNAPSHOT'
 
-			repository {
-				url "***"
-				authentication(userName: '***', password: '***')
-			}
-		}
+	        repository {
+	            url "***"
+	            authentication(userName: '***', password: '***')
+	        }
+	    }
 	}
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/2.png'/>
