@@ -7,7 +7,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
-        classpath 'com.eastwood.tools.plugins:micro-module:1.1.0'
+        classpath 'com.eastwood.tools.plugins:micro-module:1.2.0'
     }
 }
 
