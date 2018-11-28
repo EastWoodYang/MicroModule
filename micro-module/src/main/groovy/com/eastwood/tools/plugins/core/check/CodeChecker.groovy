@@ -259,9 +259,9 @@ class CodeChecker {
             stringBuilder.append('/')
         }
         stringBuilder.append(buildType)
-        project.file(stringBuilder.toString()).mkdirs()
+        new File(project.projectDir, stringBuilder.toString()).mkdirs()
         stringBuilder.append('/check-manifest.xml')
-        File manifest = project.file(stringBuilder.toString())
+        File manifest = new File(project.projectDir, stringBuilder.toString())
         checkManifest.load(manifest)
         return checkManifest
     }
@@ -276,9 +276,9 @@ class CodeChecker {
             stringBuilder.append('/')
         }
         stringBuilder.append(buildType)
-        project.file(stringBuilder.toString()).mkdirs()
+        new File(project.projectDir, stringBuilder.toString()).mkdirs()
         stringBuilder.append('/check-manifest.xml')
-        File manifest = project.file(stringBuilder.toString())
+        File manifest = new File(project.projectDir, stringBuilder.toString())
         return checkManifest.save(manifest)
     }
 

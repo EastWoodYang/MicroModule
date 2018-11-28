@@ -713,10 +713,10 @@ class MicroModulePlugin implements Plugin<Project> {
         if (processResourcesTask != null) {
             processResourcesTask.doLast {
                 def path
-                if (project.file(R_PATH).exists()) {
+                if (new File(project.buildDir, R_PATH).exists()) {
                     def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
                     path = project.projectDir.absolutePath + R_PATH + productFlavorBuildType + "/"
-                } else if (project.file(R_PATH_3_2).exists()) {
+                } else if (new File(project.buildDir, R_PATH_3_2).exists()) {
                     def productFlavorBuildType = productFlavor != null ? (productFlavor + Utils.upperCase(buildType)) : buildType
                     path = project.projectDir.absolutePath + R_PATH_3_2 + productFlavorBuildType + "/" + processResourcesTaskName + "/r/"
                 } else {
@@ -733,10 +733,10 @@ class MicroModulePlugin implements Plugin<Project> {
             if (generateRFileTask != null) {
                 generateRFileTask.doLast {
                     def path
-                    if (project.file(R_PATH).exists()) {
+                    if (new File(project.projectDir, R_PATH).exists()) {
                         def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
                         path = project.projectDir.absolutePath + R_PATH + productFlavorBuildType + "/"
-                    } else if (project.file(R_PATH_3_2).exists()) {
+                    } else if (new File(project.projectDir, R_PATH_3_2).exists()) {
                         def productFlavorBuildType = productFlavor != null ? (productFlavor + Utils.upperCase(buildType)) : buildType
                         path = project.projectDir.absolutePath + R_PATH_3_2 + productFlavorBuildType + "/" + generateRFileTaskName + "/out/"
                     } else {
