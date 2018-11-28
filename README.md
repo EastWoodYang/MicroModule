@@ -3,8 +3,8 @@ Rebuild multiple complete module structures within the module. Each complete mod
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
-### Usage
-#### Add MicroModule plugin **classpath** in root project build.gradle:
+## Usage
+### Add MicroModule plugin **classpath** in root project build.gradle:
 
     buildscript {
         dependencies {
@@ -13,7 +13,7 @@ Rebuild multiple complete module structures within the module. Each complete mod
         }
     }
 
-#### Apply MicroModule plugin in application or library module build.gradle and add configuration options：
+### Apply MicroModule plugin in application or library module build.gradle and add configuration options：
 
     apply plugin: 'micro-module'
     apply plugin: 'com.android.library' // or 'com.android.application'
@@ -56,7 +56,7 @@ The MicroModule plugin defines the following methods in `microModule {}`:
 	    export ':main'
 	}
 
-#### Declare MicroModule dependencies in MicroModule build.gradle:
+### Declare MicroModule dependencies in MicroModule build.gradle:
 The MicroModule plugin provides a simple method for declaring dependencies on other MicroModules in `dependencies {}`.
 
 	dependencies {
@@ -78,7 +78,7 @@ You can also declare dependencies on the other third party libraries in `depende
 	    implementation microModule(':p_common')
 	}
 
-#### Publish MicroModule(AAR) to Maven repositories:
+### Publish MicroModule(AAR) to Maven repositories:
 The MicroModule plugin adds support for compiling single MicroModule into an Android Archive (AAR) file, and publishing AAR file to Maven repository.
 
 The MicroModule plugin provides a factory method for creating a maven artifact. After you add configuration option of creating a maven artifact and run gradle sync, the MicroModule plugin will create a relatived upload task which publishing AAR file to Maven repository.
