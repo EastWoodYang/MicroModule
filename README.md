@@ -78,7 +78,7 @@ You can also declare dependencies on the other third party libraries in `depende
 	    implementation microModule(':p_common')
 	}
 
-### Publish MicroModule(AAR) to Maven repositories:
+### Publish MicroModule(AAR) to Maven repository:
 The MicroModule plugin adds support for compiling single MicroModule into an Android Archive (AAR) file, and publishing AAR file to Maven repository.
 
 The MicroModule plugin provides a factory method for creating a maven artifact. After you add configuration option of creating a maven artifact and run gradle sync, the MicroModule plugin will create a relatived upload task which publishing AAR file to Maven repository.
