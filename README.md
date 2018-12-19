@@ -129,7 +129,7 @@ After publishing MicroModule AAR file to Maven repository, you can use it as a d
 
 ## MicroModule Android Studio Plugin
 Provides an action which allow you quickly create MicroModule or convert module to MicroModule.
-* Right click at project or module dir, in [New] group, you will find "MicroModule" action.
+* Right click at module dir, in [New] group, you will find "MicroModule" action.
 * Right click at module dir, in [Refactor] group, you will find "Convert to MicroModule" action.
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/3-1.png'/>
