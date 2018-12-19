@@ -1,9 +1,8 @@
 package com.eastwood.tools.plugins
 
-import com.android.build.gradle.BaseExtension
-import com.android.build.gradle.LibraryExtension
-import com.android.build.gradle.tasks.ProcessAndroidResources
-import com.android.build.gradle.tasks.factory.AndroidJavaCompile
+import com.android.build.gradle.*
+import com.android.build.gradle.api.BaseVariant
+import com.android.build.gradle.api.BaseVariantOutput
 import com.android.manifmerger.ManifestMerger2
 import com.android.manifmerger.MergingReport
 import com.android.manifmerger.XmlDocument
@@ -16,22 +15,16 @@ import com.eastwood.tools.plugins.core.check.CodeChecker
 import com.eastwood.tools.plugins.core.extension.*
 import org.gradle.BuildListener
 import org.gradle.BuildResult
-import org.gradle.api.GradleException
-import org.gradle.api.Plugin
-import org.gradle.api.Project
-import org.gradle.api.Task
+import org.gradle.api.*
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.execution.TaskExecutionListener
 import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
-import org.gradle.api.tasks.TaskState
 import org.gradle.api.tasks.compile.JavaCompile
 
 class MicroModulePlugin implements Plugin<Project> {
 
-    private final static String R_PATH = "/build/generated/source/r/"
-    private final static String R_PATH_3_2 = "/build/generated/not_namespaced_r_class_sources/"
-    private final static String MAIN_MANIFEST_PATH = "/src/main/AndroidManifest.xml"
+    public final static String MAIN_MANIFEST_PATH = "/src/main/AndroidManifest.xml"
+
     private final static String UPLOAD_AAR_TASK_PREFIX = "uploadMicroModule"
     private final static String EXCLUDE_BUILD_CONFIG = "**/BuildConfig.java"
 
@@ -39,34 +32,15 @@ class MicroModulePlugin implements Plugin<Project> {
     private final static String UPLOAD_AAR = "upload_aar"
     private final static String ASSEMBLE_OR_GENERATE = "assemble_or_generate"
 
-    private final static String APPLY_NORMAL_MICRO_MODULE_SCRIPT = "apply_normal_micro_module_script"
-    private final static String APPLY_INCLUDE_MICRO_MODULE_SCRIPT = "apply_include_micro_module_script"
-    private final static String APPLY_UPLOAD_MICRO_MODULE_SCRIPT = "apply_upload_micro_module_script"
-    private final static String APPLY_EXPORT_MICRO_MODULE_SCRIPT = "apply_export_micro_module_script"
+    private final
+    static String APPLY_NORMAL_MICRO_MODULE_SCRIPT = "apply_normal_micro_module_script"
+    private final
+    static String APPLY_INCLUDE_MICRO_MODULE_SCRIPT = "apply_include_micro_module_script"
+    private final
+    static String APPLY_UPLOAD_MICRO_MODULE_SCRIPT = "apply_upload_micro_module_script"
+    private final
+    static String APPLY_EXPORT_MICRO_MODULE_SCRIPT = "apply_export_micro_module_script"
 
-    private final static TaskExecutionListener taskExecutionListener = new TaskExecutionListener() {
-        @Override
-        void beforeExecute(Task task) {
-
-        }
-
-        @Override
-        void afterExecute(Task task, TaskState taskState) {
-            if (taskState.failure) {
-                if(task instanceof AndroidJavaCompile) {
-                    if (taskState.failure.getCause().getMessage().startsWith("Compilation failed;")) {
-                        println '\n* MicroModule Tip: The MicroModule which the classes or resources belong to may not be dependent or included.\n' +
-                                '============================================================================================================='
-                    }
-                } else if(task instanceof ProcessAndroidResources) {
-                    if (taskState.failure.getCause().getMessage().startsWith("Android resource linking failed")) {
-                        println '\n* MicroModule Tip: The MicroModule which the resources belong to may not be dependent or included.\n' +
-                                '=================================================================================================='
-                    }
-                }
-            }
-        }
-    }
     private final static BuildListener buildListener = new BuildListener() {
 
         @Override
@@ -136,9 +110,6 @@ class MicroModulePlugin implements Plugin<Project> {
         project.gradle.removeListener(buildListener)
         project.gradle.addBuildListener(buildListener)
 
-        project.gradle.taskGraph.removeTaskExecutionListener(taskExecutionListener)
-        project.gradle.taskGraph.addTaskExecutionListener(taskExecutionListener)
-
         project.gradle.getStartParameter().taskNames.each {
             if (it.startsWith(UPLOAD_AAR_TASK_PREFIX)) {
                 startTaskState = UPLOAD_AAR
@@ -165,13 +136,58 @@ class MicroModulePlugin implements Plugin<Project> {
                         return
                     } else if (currentMicroModule == null && startTaskState == ASSEMBLE_OR_GENERATE) {
                         return
-                    } else if(it.group != null && it.group.startsWith("com.android.tools")) {
+                    } else if (it.group != null && it.group.startsWith("com.android.tools")) {
                         return
                     }
 
                     configuration.dependencies.remove(it)
                 }
             }
+        }
+
+        project.plugins.all {
+            Class extensionClass
+            if (it instanceof AppPlugin) {
+                extensionClass = AppExtension
+            } else if (it instanceof LibraryPlugin) {
+                extensionClass = LibraryExtension
+            } else {
+                return
+            }
+            project.extensions.configure(extensionClass, new Action<? extends TestedExtension>() {
+                @Override
+                void execute(TestedExtension testedExtension) {
+                    DomainObjectSet<BaseVariant> baseVariants
+                    if (testedExtension instanceof AppExtension) {
+                        AppExtension appExtension = (AppExtension) testedExtension
+                        baseVariants = appExtension.applicationVariants
+                    } else {
+                        LibraryExtension libraryExtension = (LibraryExtension) testedExtension
+                        baseVariants = libraryExtension.libraryVariants
+                    }
+                    def microManifestFile = new File(microModuleInfo.mainMicroModule.microModuleDir, MAIN_MANIFEST_PATH)
+                    def mainPackageName = Utils.getAndroidManifestPackageName(microManifestFile)
+
+                    baseVariants.all { BaseVariant variant ->
+
+                        File outputDir = new File(project.buildDir, "generated/source/microModule/${variant.dirName}")
+                        GenerateMicroModuleRFileTask.rewriteOrGenerateMainMicroModuleRFile(project, variant, mainPackageName, outputDir)
+
+                        variant.outputs.all { BaseVariantOutput output ->
+                            String generateMicroModuleRFileTaskName = "generate${variant.name.capitalize()}MicroModuleRFile"
+                            GenerateMicroModuleRFileTask task = project.tasks.findByName(generateMicroModuleRFileTaskName)
+                            if (task != null) return
+
+                            task = project.tasks.create("generate${variant.name.capitalize()}MicroModuleRFile", GenerateMicroModuleRFileTask)
+                            task.packageName = mainPackageName
+                            task.microModuleInfo = microModuleInfo
+                            task.outputDir = outputDir
+                            variant.registerJavaGeneratingTask(task, outputDir)
+                        }
+                    }
+
+                }
+            })
         }
 
         DefaultMicroModuleExtension microModuleExtension = project.extensions.create(MicroModuleExtension, "microModule", DefaultMicroModuleExtension, project)
@@ -192,15 +208,6 @@ class MicroModulePlugin implements Plugin<Project> {
                         microModuleInfo.addIncludeMicroModule(microModule)
                     }
                 }
-
-                if(productFlavorInfo == null) {
-                    productFlavorInfo = new ProductFlavorInfo(project)
-                    clearOriginSourceSet()
-                    if(microModuleInfo.mainMicroModule != null) {
-                        addMicroModuleSourceSet(microModuleInfo.mainMicroModule)
-                    }
-                }
-                addMicroModuleSourceSet(microModule)
             }
 
             @Override
@@ -263,9 +270,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
             appliedLibraryPlugin = project.pluginManager.hasPlugin('com.android.library')
 
-            if(productFlavorInfo == null) {
-                productFlavorInfo = new ProductFlavorInfo(project)
-            }
+            productFlavorInfo = new ProductFlavorInfo(project)
 
             microModuleExtension.onMavenArtifactListener = new OnMavenArtifactListener() {
                 @Override
@@ -311,7 +316,7 @@ class MicroModulePlugin implements Plugin<Project> {
                             project.dependencies.add('api', mavenArtifact.groupId + ":" + mavenArtifact.artifactId + ":" + mavenArtifact.version)
                             microModule.addDependency = true
                         } else {
-                            if(microModule.appliedScript) return
+                            if (microModule.appliedScript) return
 
                             addMicroModuleSourceSet(microModule)
                             applyMicroModuleScript(microModule)
@@ -333,7 +338,7 @@ class MicroModulePlugin implements Plugin<Project> {
                 applyMicroModuleScript(mainMicroModule)
 
                 if (microModuleInfo.mainMicroModule.useMavenArtifact) {
-                    excludeBuildConfig()
+                    excludeBuildConfigFile()
                 }
             } else {
                 applyScriptState = APPLY_NORMAL_MICRO_MODULE_SCRIPT
@@ -365,8 +370,6 @@ class MicroModulePlugin implements Plugin<Project> {
                 }
 
                 generateAndroidManifest()
-
-                generateR()
             }
 
             if (microModuleExtension.codeCheckEnabled) {
@@ -399,7 +402,7 @@ class MicroModulePlugin implements Plugin<Project> {
 
     def checkMicroModuleMavenArtifact(String name) {
         microModuleInfo.dependencyGraph.bfsDistance(name).each {
-            if(it.value == null || it.value == 0) return
+            if (it.value == null || it.value == 0) return
 
             MicroModule childMicroModule = microModuleInfo.getMicroModule(it.key)
             if (!childMicroModule.useMavenArtifact) {
@@ -680,97 +683,6 @@ class MicroModulePlugin implements Plugin<Project> {
         obj.renderscript.srcDirs = srcDirs
     }
 
-    def generateR() {
-        def microManifestFile = new File(microModuleInfo.mainMicroModule.microModuleDir, MAIN_MANIFEST_PATH)
-        def mainPackageName = Utils.getAndroidManifestPackageName(microManifestFile)
-        productFlavorInfo.buildTypes.each {
-            def buildType = it
-            if (productFlavorInfo.productFlavors.size() == 0) {
-                generateRByProductFlavorBuildType(mainPackageName, buildType, null)
-            } else {
-                if (!productFlavorInfo.singleDimension) {
-                    productFlavorInfo.productFlavors.each {
-                        generateRByProductFlavorBuildType(mainPackageName, buildType, it)
-                    }
-                }
-
-                productFlavorInfo.combinedProductFlavors.each {
-                    generateRByProductFlavorBuildType(mainPackageName, buildType, it)
-                    def combinedProductFlavor = it
-                    productFlavorInfo.buildTypes.each {
-                        generateRByProductFlavorBuildType(mainPackageName, buildType, combinedProductFlavor + Utils.upperCase(it))
-                    }
-                }
-            }
-        }
-    }
-
-    def generateRByProductFlavorBuildType(mainPackageName, buildType, productFlavor) {
-        def buildTypeFirstUp = Utils.upperCase(buildType)
-        def productFlavorFirstUp = productFlavor != null ? Utils.upperCase(productFlavor) : ""
-        def processResourcesTaskName = "process${productFlavorFirstUp}${buildTypeFirstUp}Resources"
-        def processResourcesTask = project.tasks.findByName(processResourcesTaskName)
-        if (processResourcesTask != null) {
-            processResourcesTask.doLast {
-                def path
-                if (new File(project.projectDir, R_PATH).exists()) {
-                    def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
-                    path = project.projectDir.absolutePath + R_PATH + productFlavorBuildType + "/"
-                } else if (new File(project.projectDir, R_PATH_3_2).exists()) {
-                    def productFlavorBuildType = productFlavor != null ? (productFlavor + Utils.upperCase(buildType)) : buildType
-                    path = project.projectDir.absolutePath + R_PATH_3_2 + productFlavorBuildType + "/" + processResourcesTaskName + "/r/"
-                } else {
-                    return
-                }
-                def file = project.file(path + mainPackageName.replace(".", "/") + "/R.java")
-                def newR = file.text.replace("public final class R", "public class R").replace("private R() {}", "")
-                file.write(newR)
-                generateMicroModuleResources(mainPackageName, path)
-            }
-        } else {
-            def generateRFileTaskName = "generate${productFlavorFirstUp}${buildTypeFirstUp}RFile"
-            def generateRFileTask = project.tasks.findByName(generateRFileTaskName)
-            if (generateRFileTask != null) {
-                generateRFileTask.doLast {
-                    def path
-                    if (new File(project.projectDir, R_PATH).exists()) {
-                        def productFlavorBuildType = productFlavor != null ? (productFlavor + "/" + buildType) : buildType
-                        path = project.projectDir.absolutePath + R_PATH + productFlavorBuildType + "/"
-                    } else if (new File(project.projectDir, R_PATH_3_2).exists()) {
-                        def productFlavorBuildType = productFlavor != null ? (productFlavor + Utils.upperCase(buildType)) : buildType
-                        path = project.projectDir.absolutePath + R_PATH_3_2 + productFlavorBuildType + "/" + generateRFileTaskName + "/out/"
-                    } else {
-                        return
-                    }
-                    def file = project.file(path + mainPackageName.replace(".", "/") + "/R.java")
-                    def newR = file.text.replace("public final class R", "public class R").replace("private R() {}", "")
-                    file.write(newR)
-                    generateMicroModuleResources(mainPackageName, path)
-                }
-            }
-        }
-    }
-
-    def generateMicroModuleResources(packageName, path) {
-        def packageNames = []
-        microModuleInfo.includeMicroModules.each {
-            MicroModule microModule = it.value
-            def microManifestFile = new File(microModule.microModuleDir, MAIN_MANIFEST_PATH)
-            if (!microManifestFile.exists()) {
-                return
-            }
-            def microModulePackageName = Utils.getAndroidManifestPackageName(microManifestFile)
-            if (microModulePackageName == null || packageNames.contains(microModulePackageName)) return
-
-            packageNames << microModulePackageName
-            def RPath = path + microModulePackageName.replace(".", "/")
-            File RFile = project.file(RPath + "/R.java")
-            if (RFile.exists()) return
-            project.file(RPath).mkdirs()
-            RFile.write("package " + microModulePackageName + ";\n\n/** This class is generated by micro-module plugin, DO NOT MODIFY. */\npublic class R extends " + packageName + ".R {\n\n}")
-        }
-    }
-
     void applyMicroModuleScript(MicroModule microModule) {
         def microModuleBuild = new File(microModule.microModuleDir, "build.gradle")
         if (microModuleBuild.exists()) {
@@ -811,7 +723,7 @@ class MicroModulePlugin implements Plugin<Project> {
         }
     }
 
-    def excludeBuildConfig() {
+    def excludeBuildConfigFile() {
         project.gradle.taskGraph.whenReady {
             BaseExtension extension = (BaseExtension) project.extensions.getByName("android")
             extension.buildTypes.each {
