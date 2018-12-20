@@ -17,14 +17,14 @@ class ResourceMerged {
     List<NodeList> resourceNodeLists
     Map<String, String> resourcesMap
 
-    boolean load(File projectDir, String mergeTaskName) {
+    boolean load(File projectDir, String mergeResourcesTaskName) {
         projectPath = projectDir.absolutePath
-        String mergedPath = "build/intermediates/incremental/${mergeTaskName}/merger.xml"
+        String mergedPath = "build/intermediates/incremental/${mergeResourcesTaskName}/merger.xml"
         resourcesMergerFile = new File(projectDir, mergedPath)
         return resourcesMergerFile.exists()
     }
 
-    List<NodeList> getResourcesNodeList(List<String> combinedProductFlavors) {
+    List<NodeList> getResourcesNodeList(List<String> sourceFolders) {
         if (resourceNodeLists == null) {
             resourceNodeLists = new ArrayList<>()
         } else {
@@ -41,7 +41,7 @@ class ResourceMerged {
         for (int i = 0; i < dataSetNodeList.getLength(); i++) {
             Element dataSetElement = (Element) dataSetNodeList.item(i)
             def config = dataSetElement.getAttribute("config")
-            if (combinedProductFlavors.contains(config)) {
+            if (sourceFolders.contains(config)) {
                 resourceNodeLists.add(dataSetElement.getElementsByTagName("source"))
             }
         }

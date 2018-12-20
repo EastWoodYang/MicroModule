@@ -35,13 +35,13 @@ class CodeChecker {
         this.checkManifest = getModuleCheckManifest()
     }
 
-    void checkResources(String mergeTaskName, List<String> combinedProductFlavors) {
+    void checkResources(String mergeResourcesTaskName, List<String> sourceFolders) {
         resourceMerged = new ResourceMerged()
-        if (!resourceMerged.load(project.projectDir, mergeTaskName)) {
+        if (!resourceMerged.load(project.projectDir, mergeResourcesTaskName)) {
             return
         }
 
-        List<NodeList> resourceNodeLists = resourceMerged.getResourcesNodeList(combinedProductFlavors)
+        List<NodeList> resourceNodeLists = resourceMerged.getResourcesNodeList(sourceFolders)
         List<File> modifiedResourcesList = getModifiedResourcesList(resourceNodeLists)
         if (modifiedResourcesList.size() == 0) {
             return
@@ -128,15 +128,15 @@ class CodeChecker {
         }
     }
 
-    void checkClasses(String mergeTaskName, List<String> combinedProductFlavors) {
-        List<File> modifiedClassesList = getModifiedClassesList(combinedProductFlavors)
+    void checkClasses(String mergeResourcesTaskName, List<String> sourceFolders) {
+        List<File> modifiedClassesList = getModifiedClassesList(sourceFolders)
         if (modifiedClassesList.size() == 0) {
             return
         }
 
         if (resourceMerged == null) {
             resourceMerged = new ResourceMerged()
-            if (!resourceMerged.load(project.projectDir, mergeTaskName)) {
+            if (!resourceMerged.load(project.projectDir, mergeResourcesTaskName)) {
                 return
             }
         }
@@ -147,12 +147,12 @@ class CodeChecker {
         saveModuleCheckManifest()
     }
 
-    List<File> getModifiedClassesList(List<String> combinedProductFlavors) {
+    List<File> getModifiedClassesList(List<String> sourceFolders) {
         Map<String, MicroModuleFile> lastModifiedClassesMap = checkManifest.getClassesMap()
         List<File> modifiedClassesList = new ArrayList<>()
         microModuleInfo.includeMicroModules.each {
             MicroModule microModule = it.value
-            combinedProductFlavors.each {
+            sourceFolders.each {
                 File javaDir = new File(microModule.microModuleDir, "/src/${it}/java")
                 getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
             }
