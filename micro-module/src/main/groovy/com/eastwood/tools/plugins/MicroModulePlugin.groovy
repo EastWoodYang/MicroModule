@@ -682,9 +682,10 @@ class MicroModulePlugin implements Plugin<Project> {
     void applyMicroModuleScript(MicroModule microModule) {
         def microModuleBuild = new File(microModule.microModuleDir, 'build.gradle')
         if (microModuleBuild.exists()) {
+            MicroModule tempMicroModule = currentMicroModule
             currentMicroModule = microModule
             project.apply from: microModuleBuild.absolutePath
-            currentMicroModule = null
+            currentMicroModule = tempMicroModule
         }
     }
 
