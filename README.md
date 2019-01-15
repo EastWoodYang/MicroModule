@@ -9,7 +9,7 @@ Rebuild multiple complete module structures within the module. Each complete mod
     buildscript {
         dependencies {
 	        ...
-            classpath 'com.eastwood.tools.plugins:micro-module:1.2.1'
+            classpath 'com.eastwood.tools.plugins:micro-module:1.3.0'
         }
     }
 
