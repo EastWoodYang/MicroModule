@@ -7,7 +7,7 @@ package com.eastwood.demo.library.common;
 public class Common {
 
     void test() {
-
+        int i = R.string.test_code_check_common;
     }
 
 }

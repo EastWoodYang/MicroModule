@@ -7,6 +7,6 @@ package com.eastwood.demo.application.common;
 public class Common {
 
     void test() {
-
+        int i = R.string.common;
     }
 }

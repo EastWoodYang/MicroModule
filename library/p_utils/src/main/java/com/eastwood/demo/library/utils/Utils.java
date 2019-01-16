@@ -6,4 +6,7 @@ package com.eastwood.demo.library.utils;
  */
 public class Utils {
 
+    void test() {
+        int i = R.string.test_code_check_utils;
+    }
 }

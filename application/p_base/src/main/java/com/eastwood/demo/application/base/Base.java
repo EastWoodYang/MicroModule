@@ -7,7 +7,7 @@ package com.eastwood.demo.application.base;
 public class Base {
 
     void test() {
-
+        int i = R.string.base;
     }
 
 }
