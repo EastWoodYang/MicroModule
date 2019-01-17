@@ -265,7 +265,7 @@ class MicroModulePlugin implements Plugin<Project> {
                         }
 
                         File outputDir = new File(project.buildDir, "generated/source/microModule/${variant.dirName}")
-                        GenerateMicroModuleRFileTask.rewriteOrGenerateMainMicroModuleRFile(project, variant, mainPackageName, outputDir)
+                        GenerateMicroModuleRFileTask.rewriteOrGenerateMainMicroModuleRFile(project, variant, mainPackageName)
 
                         variant.outputs.all { BaseVariantOutput output ->
                             String generateMicroModuleRFileTaskName = "generate${variant.name.capitalize()}MicroModuleRFile"
@@ -372,6 +372,7 @@ class MicroModulePlugin implements Plugin<Project> {
                     applyMicroModuleScript(microModule)
                 }
             }
+            currentMicroModule = null
 
             generateAndroidManifest()
 
