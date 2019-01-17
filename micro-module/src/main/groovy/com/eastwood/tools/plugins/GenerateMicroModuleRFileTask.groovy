@@ -75,28 +75,33 @@ class GenerateMicroModuleRFileTask extends DefaultTask {
             } else {
                 throw new RuntimeException("Can not find R file.")
             }
-            modifyRClassAccess(RFile)
+            modifyRClassAccess(RFile, packageName)
         }
     }
 
-    private static void modifyRClassAccess(File RFile) {
+    private static void modifyRClassAccess(File RFile, String packageName) {
         if (RFile.name.endsWith('.java')) {
             def newR = RFile.text.replace("public final class R", "public class R").replace("private R() {}", "")
             RFile.write(newR)
             return
         }
 
+        String targetRClass = packageName.replace(".", "/") + "/R.class"
         Map<String, byte[]> tempModifiedClassByteMap = new HashMap()
-
         JarFile jarFile = new JarFile(RFile)
         Enumeration<JarEntry> jarEntryEnumeration = jarFile.entries()
         while (jarEntryEnumeration.hasMoreElements()) {
             JarEntry jarEntry = jarEntryEnumeration.nextElement()
+            String filename = jarEntry.getName()
+            if (filename != targetRClass) {
+                continue
+            }
+
             InputStream inputStream = jarFile.getInputStream(jarEntry)
             if (inputStream != null) {
                 byte[] bytes = modifyRClassAccess(inputStream.bytes)
                 if (bytes != null) {
-                    tempModifiedClassByteMap.put(jarEntry.getName(), bytes)
+                    tempModifiedClassByteMap.put(filename, bytes)
                 }
             }
             inputStream.close()
@@ -124,13 +129,15 @@ class GenerateMicroModuleRFileTask extends DefaultTask {
                 jarOutputStream.closeEntry()
             }
             jarOutputStream.close()
+            jarFile.close()
 
             FileOutputStream outputStream = new FileOutputStream(RFile)
             outputStream.write(tempJar.bytes)
             outputStream.close()
             tempJar.delete()
+        } else {
+            jarFile.close()
         }
-        jarFile.close()
     }
 
     private static byte[] modifyRClassAccess(byte[] bytes) {
