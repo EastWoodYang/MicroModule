@@ -52,8 +52,9 @@ class ResourceMerged {
         if (resourcesMap != null) return resourcesMap
 
         Map<String, String> resourcesMap = new HashMap<String, String>()
-        if (resourceNodeLists == null || resourceNodeLists.length == 0)
+        if (resourceNodeLists == null || resourceNodeLists.length == 0) {
             return resourcesMap
+        }
 
         resourceNodeLists.each {
             int length = it.length

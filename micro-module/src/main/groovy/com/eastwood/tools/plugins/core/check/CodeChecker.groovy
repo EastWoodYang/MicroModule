@@ -129,6 +129,14 @@ class CodeChecker {
     }
 
     void checkClasses(String mergeResourcesTaskName, List<String> sourceFolders) {
+        if(resourceMerged == null) {
+            resourceMerged = new ResourceMerged()
+            if (!resourceMerged.load(project.projectDir, mergeResourcesTaskName)) {
+                return
+            }
+            resourceMerged.getResourcesNodeList(sourceFolders)
+        }
+
         List<File> modifiedClassesList = getModifiedClassesList(sourceFolders)
         if (modifiedClassesList.size() == 0) {
             return
