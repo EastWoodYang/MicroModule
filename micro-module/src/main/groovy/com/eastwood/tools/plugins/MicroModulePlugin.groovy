@@ -226,6 +226,7 @@ class MicroModulePlugin implements Plugin<Project> {
             } else {
                 return
             }
+
             project.extensions.configure(extensionClass, new Action<? extends TestedExtension>() {
                 @Override
                 void execute(TestedExtension testedExtension) {
@@ -264,8 +265,9 @@ class MicroModulePlugin implements Plugin<Project> {
                             return
                         }
 
+                        boolean appliedKotlinPlugin = project.pluginManager.hasPlugin('kotlin-android')
                         File outputDir = new File(project.buildDir, "generated/source/microModule/${variant.dirName}")
-                        GenerateMicroModuleRFileTask.rewriteOrGenerateMainMicroModuleRFile(project, variant, mainPackageName)
+                        GenerateMicroModuleRFileTask.modifyModuleRFile(project, variant, mainPackageName, microModuleInfo, outputDir, appliedKotlinPlugin)
 
                         variant.outputs.all { BaseVariantOutput output ->
                             String generateMicroModuleRFileTaskName = "generate${variant.name.capitalize()}MicroModuleRFile"
@@ -276,7 +278,40 @@ class MicroModulePlugin implements Plugin<Project> {
                             task.packageName = mainPackageName
                             task.microModuleInfo = microModuleInfo
                             task.outputDir = outputDir
+                            task.appliedKotlinPlugin = appliedKotlinPlugin
+                            task.variant = variant
                             variant.registerJavaGeneratingTask(task, outputDir)
+
+                            if (appliedKotlinPlugin) {
+                                project.gradle.addBuildListener(new BuildListener() {
+                                    @Override
+                                    void buildStarted(Gradle gradle) {
+
+                                    }
+
+                                    @Override
+                                    void settingsEvaluated(Settings settings) {
+
+                                    }
+
+                                    @Override
+                                    void projectsLoaded(Gradle gradle) {
+
+                                    }
+
+                                    @Override
+                                    void projectsEvaluated(Gradle gradle) {
+
+                                    }
+
+                                    @Override
+                                    void buildFinished(BuildResult buildResult) {
+                                        if (task.generatedMicroModuleRClass) {
+                                            task.revertMicroModuleRClass()
+                                        }
+                                    }
+                                })
+                            }
                         }
                     }
                 }
