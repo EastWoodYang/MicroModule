@@ -1,4 +1,4 @@
-include ':application', ':library'
+include ':application', ':library', ':kotlin'
 
 if(file('micro-module').exists()) {
     includeBuild 'micro-module'
