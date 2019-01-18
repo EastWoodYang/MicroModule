@@ -154,7 +154,13 @@ class CodeChecker {
             MicroModule microModule = it.value
             sourceFolders.each {
                 File javaDir = new File(microModule.microModuleDir, "/src/${it}/java")
-                getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+                if (javaDir.exists()) {
+                    getModifiedJavaFile(javaDir, modifiedClassesList, lastModifiedClassesMap)
+                }
+                File kotlinDir = new File(microModule.microModuleDir, "/src/${it}/kotlin")
+                if (kotlinDir.exists()) {
+                    getModifiedJavaFile(kotlinDir, modifiedClassesList, lastModifiedClassesMap)
+                }
             }
         }
         return modifiedClassesList
@@ -188,8 +194,7 @@ class CodeChecker {
         Map<String, String> classesMap = new HashMap<>()
         checkManifest.getClassesMap().each {
             MicroModuleFile resourceFile = it.value
-            def path = resourceFile.path
-            def name = path.substring(path.indexOf("java") + 5, path.lastIndexOf(".")).replace(File.separator, ".")
+            def name = getClassFullName(resourceFile.path)
             classesMap.put(name, resourceFile.microModuleName)
         }
 
@@ -240,7 +245,19 @@ class CodeChecker {
         }
     }
 
-    String getMicroModuleName(absolutePath) {
+    String getClassFullName(String path) {
+        String microModulePath = path.replace(project.projectDir.absolutePath, "")
+        if (microModulePath.startsWith(File.separator)) {
+            microModulePath = microModulePath.substring(microModulePath.indexOf(File.separator) + 1)
+        }
+        String scrPath = microModulePath.substring(microModulePath.indexOf(File.separator) + 1)
+        String variantPath = scrPath.substring(scrPath.indexOf(File.separator) + 1)
+        String javaPath = variantPath.substring(variantPath.indexOf(File.separator) + 1)
+        String classPath = javaPath.substring(javaPath.indexOf(File.separator) + 1)
+        return classPath.substring(0, classPath.lastIndexOf(".")).replace(File.separator, ".")
+    }
+
+    String getMicroModuleName(String absolutePath) {
         String moduleName = absolutePath.replace(project.projectDir.absolutePath, "")
         moduleName = moduleName.substring(0, moduleName.indexOf(ResourceMerged.SRC))
         if (File.separator == "\\") {

@@ -32,7 +32,7 @@ class CheckManifest {
         resourcesLastModified = lastModified
     }
 
-    Map<String, Long> getResourcesMap() {
+    Map<String, MicroModuleFile> getResourcesMap() {
         if (lastModifiedResourcesMap != null) return lastModifiedResourcesMap
 
         lastModifiedResourcesMap = new HashMap<>()
@@ -46,12 +46,12 @@ class CheckManifest {
         NodeList fileNodeList = resourcesElement.getElementsByTagName("file")
         for (int i = 0; i < fileNodeList.getLength(); i++) {
             Element fileElement = (Element) fileNodeList.item(i)
-            MicroModuleFile resourceFile = new MicroModuleFile()
-            resourceFile.name = fileElement.getAttribute("name")
-            resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
-            resourceFile.path = fileElement.getAttribute("path")
-            resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
-            lastModifiedResourcesMap.put(resourceFile.path, resourceFile)
+            MicroModuleFile microModuleFile = new MicroModuleFile()
+            microModuleFile.name = fileElement.getAttribute("name")
+            microModuleFile.microModuleName = fileElement.getAttribute("microModuleName")
+            microModuleFile.path = fileElement.getAttribute("path")
+            microModuleFile.lastModified = fileElement.getAttribute("lastModified").toLong()
+            lastModifiedResourcesMap.put(microModuleFile.path, microModuleFile)
         }
         return lastModifiedResourcesMap
     }
@@ -70,12 +70,12 @@ class CheckManifest {
         NodeList fileNodeList = classesElement.getElementsByTagName("file")
         for (int i = 0; i < fileNodeList.getLength(); i++) {
             Element fileElement = (Element) fileNodeList.item(i)
-            MicroModuleFile resourceFile = new MicroModuleFile()
-            resourceFile.name = fileElement.getAttribute("name")
-            resourceFile.microModuleName = fileElement.getAttribute("microModuleName")
-            resourceFile.path = fileElement.getAttribute("path")
-            resourceFile.lastModified = fileElement.getAttribute("lastModified").toLong()
-            lastModifiedClassesMap.put(resourceFile.path, resourceFile)
+            MicroModuleFile microModuleFile = new MicroModuleFile()
+            microModuleFile.name = fileElement.getAttribute("name")
+            microModuleFile.microModuleName = fileElement.getAttribute("microModuleName")
+            microModuleFile.path = fileElement.getAttribute("path")
+            microModuleFile.lastModified = fileElement.getAttribute("lastModified").toLong()
+            lastModifiedClassesMap.put(microModuleFile.path, microModuleFile)
         }
         return lastModifiedClassesMap
     }

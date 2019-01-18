@@ -687,6 +687,7 @@ class MicroModulePlugin implements Plugin<Project> {
         }
 
         obj.java.srcDir(absolutePath + "/src/${type}/java")
+        obj.java.srcDir(absolutePath + "/src/${type}/kotlin")
         obj.res.srcDir(absolutePath + "/src/${type}/res")
         obj.jni.srcDir(absolutePath + "/src/${type}/jni")
         obj.jniLibs.srcDir(absolutePath + "/src/${type}/jniLibs")
