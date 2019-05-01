@@ -17,7 +17,7 @@ import java.util.zip.ZipEntry
 
 class GenerateMicroModuleRFileTask extends DefaultTask {
 
-    public final static List<String> SUPPORT_RESOURCE_TYPE = ["anim", "array", "attr", "bool", "color", "dimen",
+    public final static List<String> SUPPORT_RESOURCE_TYPE = ["anim", "array", "attr", "bool", "color", "dimen", "mipmap",
                                                               "drawable", "id", "integer", "layout", "menu", "plurals", "string", "style", "styleable"]
 
     String packageName
