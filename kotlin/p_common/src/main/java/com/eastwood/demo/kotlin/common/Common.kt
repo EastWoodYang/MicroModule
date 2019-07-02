@@ -1,5 +1,7 @@
 package com.eastwood.demo.kotlin.common
 
+import com.eastwood.demo.kotlin.R
+
 /**
  *
  * @author eastwood
@@ -8,6 +10,7 @@ package com.eastwood.demo.kotlin.common
 class Common {
 
     fun test() {
+
         var i = R.string.kotlin_common
     }
 

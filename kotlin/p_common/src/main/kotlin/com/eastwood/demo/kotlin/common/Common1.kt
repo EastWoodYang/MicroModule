@@ -1,5 +1,7 @@
 package com.eastwood.demo.kotlin.common
 
+import com.eastwood.demo.kotlin.R
+
 /**
  *
  * @author eastwood

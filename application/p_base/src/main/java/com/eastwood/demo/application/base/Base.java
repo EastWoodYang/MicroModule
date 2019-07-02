@@ -1,5 +1,7 @@
 package com.eastwood.demo.application.base;
 
+import com.eastwood.demo.application.R;
+
 /**
  * @author eastwood
  * createDate: 2018-05-29

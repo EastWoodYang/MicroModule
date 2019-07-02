@@ -1,18 +1,3 @@
-microModule {
-
-    useMavenArtifact false
-
-    mavenArtifact {
-        groupId 'com.eastwood.demo'
-        artifactId 'library-p_common'
-        version '1.0.0-SNAPSHOT'
-
-        repository {
-            url "***"
-            authentication(userName: '***', password: '***')
-        }
-    }
-}
 
 dependencies {
     implementation microModule(':p_base')

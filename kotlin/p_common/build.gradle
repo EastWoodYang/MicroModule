@@ -1,22 +1,6 @@
 // MicroModule build file where you can add configuration options to publish MicroModule(aar) to Maven 
 // and declare MicroModule dependencies.
 
-microModule {
-
-    useMavenArtifact false
-
-    mavenArtifact {
-        groupId 'com.eastwood.demo'
-        artifactId 'kotlin-p_common'
-        version '1.0.0-SNAPSHOT'
-
-        repository {
-            url "***"
-            authentication(userName: '***', password: '***')
-        }
-    }
-}
-
 dependencies {
     implementation fileTree(dir: 'p_common/libs', include: ['*.jar'])
 }

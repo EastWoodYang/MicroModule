@@ -4,13 +4,11 @@ import com.eastwood.tools.plugins.core.MicroModule
 import com.eastwood.tools.plugins.core.Utils
 import org.gradle.api.GradleException
 import org.gradle.api.Project
-import org.gradle.util.ConfigureUtil
 
 class DefaultMicroModuleExtension implements MicroModuleExtension {
 
     Project project
     OnMicroModuleListener onMicroModuleListener
-    OnMavenArtifactListener onMavenArtifactListener
 
     boolean codeCheckEnabled = true
 
@@ -53,22 +51,6 @@ class DefaultMicroModuleExtension implements MicroModuleExtension {
             throw new GradleException("MicroModule with path '${microModulePath}' could not be found in ${project.getDisplayName()}.")
         }
         onMicroModuleListener.addIncludeMicroModule(microModule, true)
-    }
-
-    @Override
-    void useMavenArtifact(boolean value) {
-        if(onMavenArtifactListener == null) return
-
-        onMavenArtifactListener.onUseMavenArtifactChanged(value)
-    }
-
-    @Override
-    void mavenArtifact(Closure closure) {
-        if(onMavenArtifactListener == null) return
-
-        MavenArtifact mavenArtifact = new MavenArtifact()
-        ConfigureUtil.configure(closure, mavenArtifact)
-        onMavenArtifactListener.onMavenArtifactChanged(mavenArtifact)
     }
 
 }

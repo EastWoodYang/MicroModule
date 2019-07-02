@@ -2,7 +2,6 @@ apply plugin: 'micro-module'
 apply plugin: 'com.android.library'
 
 apply plugin: 'kotlin-android'
-
 apply plugin: 'kotlin-android-extensions'
 
 android {
@@ -23,8 +22,15 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+
+        preview {
+
+        }
     }
 
+    androidExtensions {
+        experimental = true
+    }
 }
 
 microModule {

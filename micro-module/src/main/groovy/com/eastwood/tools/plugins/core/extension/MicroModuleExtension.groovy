@@ -10,8 +10,4 @@ interface MicroModuleExtension {
 
     void include(String... microModulePaths)
 
-    void useMavenArtifact(boolean value)
-
-    void mavenArtifact(Closure closure)
-
 }

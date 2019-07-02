@@ -1,5 +1,7 @@
 package com.eastwood.demo.library.common;
 
+import com.eastwood.demo.library.R;
+
 /**
  * @author eastwood
  * createDate: 2018-11-09

@@ -224,8 +224,7 @@ class CodeChecker {
                     from = resourcesMap.get(name)
                 } else if (find.startsWith("import")) {
                     name = find.substring(find.lastIndexOf(" ") + 1, find.length())
-                    if (name.endsWith('.R') || name.endsWith('.BuildConfig')) {
-                        handleMicroModuleRAndBuildConfig(microModuleName, name, find, textLines, absolutePath)
+                    if(name.endsWith('.R')) {
                         continue
                     }
                     from = classesMap.get(name)
