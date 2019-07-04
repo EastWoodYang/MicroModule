@@ -29,7 +29,6 @@ class MicroModulePlugin implements Plugin<Project> {
 
     private final static String APPLY_NORMAL_MICRO_MODULE_SCRIPT = 'apply_normal_micro_module_script'
     private final static String APPLY_INCLUDE_MICRO_MODULE_SCRIPT = 'apply_include_micro_module_script'
-    private final static String APPLY_UPLOAD_MICRO_MODULE_SCRIPT = 'apply_upload_micro_module_script'
     private final static String APPLY_EXPORT_MICRO_MODULE_SCRIPT = 'apply_export_micro_module_script'
 
     private final static BuildListener buildListener = new BuildListener() {
@@ -114,8 +113,7 @@ class MicroModulePlugin implements Plugin<Project> {
                     if (applyScriptState == APPLY_INCLUDE_MICRO_MODULE_SCRIPT) {
                         configuration.dependencies.remove(it)
                         return
-                    } else if (applyScriptState == APPLY_UPLOAD_MICRO_MODULE_SCRIPT
-                            || applyScriptState == APPLY_NORMAL_MICRO_MODULE_SCRIPT
+                    } else if (applyScriptState == APPLY_NORMAL_MICRO_MODULE_SCRIPT
                             || applyScriptState == APPLY_EXPORT_MICRO_MODULE_SCRIPT) {
                         return
                     } else if (currentMicroModule == null && startTaskState == ASSEMBLE_OR_GENERATE) {

@@ -306,43 +306,6 @@ class CodeChecker {
         return checkManifest.save(manifest)
     }
 
-    private void handleMicroModuleRAndBuildConfig(String microModuleName, String name, String find, List<String> textLines, String absolutePath) {
-        String packageName = name.substring(0, name.lastIndexOf('.'))
-        List<String> microModules = microModulePackageNameMap.get(packageName)
-        if (microModules == null || microModules.contains(name)) return
-
-        boolean hasDependency
-        List<String> withoutDependency = new ArrayList<>()
-        for (String from : microModules) {
-            hasDependency = microModuleInfo.hasDependency(microModuleName, from)
-            if (hasDependency) {
-                break
-            }
-            withoutDependency.add(from)
-        }
-
-        if (hasDependency) {
-            return
-        }
-
-        List<Number> lines = textLines.findIndexValues { it.contains(find) }
-        lines.each {
-            def lineIndex = it.intValue()
-            def lineContext = textLines.get(lineIndex).trim()
-            if (lineContext.startsWith("//") || lineContext.startsWith("/*")) {
-                return
-            }
-
-            def message = absolutePath + ':' + (lineIndex + 1)
-            if (!errorMessage.contains(message)) {
-                message += lineSeparator
-                message += "- cannot use [" + find + "] which from MicroModule '${withoutDependency.get(0)}'."
-                message += lineSeparator
-                errorMessage += message
-            }
-        }
-    }
-
     private String initMicroModulePackageName() {
         microModulePackageNameMap = new HashMap<>()
         microModuleInfo.includeMicroModules.each {
