@@ -1,5 +1,5 @@
 # MicroModule
-Rebuild multiple complete module structures within the module. Each complete module structure we called it MicroModule, Each MicroModule has its own `build.gradle` file where you can add configuration options to publish MicroModule(aar) to Maven and declare MicroModule dependencies. In addition, you can decide which MicroModules participate in the compilation of the module.
+Rebuild multiple complete module structures within the module. Each complete module structure we called it MicroModule, Each MicroModule has its own `build.gradle` file where you can declare MicroModule dependencies. In addition, you can decide which MicroModules participate in the compilation of the module.
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
@@ -9,7 +9,7 @@ Rebuild multiple complete module structures within the module. Each complete mod
     buildscript {
         dependencies {
 	        ...
-            classpath 'com.eastwood.tools.plugins:micro-module:1.3.2'
+            classpath 'com.eastwood.tools.plugins:micro-module:1.4.0'
         }
     }
 
@@ -78,54 +78,6 @@ You can also declare dependencies on the other third party libraries in `depende
 	    implementation microModule(':p_common')
 	}
 
-### Publish MicroModule(AAR) to Maven repository:
-The MicroModule plugin adds support for compiling single MicroModule into an Android Archive (AAR) file, and publishing AAR file to Maven repository.
-
-The MicroModule plugin provides a factory method for creating a maven artifact. After you add configuration option of creating a maven artifact and run gradle sync, the MicroModule plugin will create a relatived upload task which publishing AAR file to Maven repository.
-
-*Example 3. Creating a maven artifact.*
-
-	microModule {
-	    mavenArtifact {
-	        groupId 'com.eastwood.demo'
-	        artifactId 'library-base'
-	        version '1.0.0-SNAPSHOT'
-
-	        repository {
-	            url "***"
-	            authentication(userName: '***', password: '***')
-	        }
-	    }
-	}
-
-<img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/2.png'/>
-
-
-After publishing MicroModule AAR file to Maven repository, you can use it as a dependency instead of the local source code. All you have to do is add the attribute `useMavenArtifact` and set it to true.
-
-*Example 4. the complete example of the MicroModule build.gradle file.*
-
-	microModule {
-	    useMavenArtifact true
-	    mavenArtifact {
-	        groupId 'com.eastwood.demo'
-	        artifactId 'library-base'
-	        version '1.0.0-SNAPSHOT'
-
-	        repository {
-	            url "***"
-	            authentication(userName: '***', password: '***')
-	        }
-	    }
-	}
-
-	dependencies {
-	    implementation fileTree(dir: 'main/libs', include: ['*.jar'])
-	    implementation 'com.android.support:appcompat-v7:27.1.1'
-	    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
-
-	    implementation microModule(':p_common')
-	}
 
 ## MicroModule Android Studio Plugin
 Provides an action which allow you quickly create MicroModule or convert module to MicroModule.
