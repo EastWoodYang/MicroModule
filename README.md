@@ -98,6 +98,9 @@ Provides an action which allow you quickly create MicroModule or convert module 
 
 [https://plugins.jetbrains.com/plugin/10785-micromodule](https://plugins.jetbrains.com/plugin/10785-micromodule)
 
+## Question or Idea
+有问题或想法可以直接加我微信: EastWoodYang
+
 ## License
 
 ```
