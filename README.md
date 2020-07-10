@@ -69,7 +69,7 @@ dependencies {}
     指定主MicroModule。
     当前模块的其他MicroModule的`AndroidManifest.xml`，将会合入主MicroModule的`AndroidManifest.xml`，并存放在`build/microModule/merge-manifest/`下。另外，当前模块的R类包名也将由主模块`AndroidManifest.xml`的`package`决定。
 
-    默认主MicroModule为目录名为`main`的MicroModule。通过MicroModule Android Studio插件的转换功能，将模块转换成MicroModule格式时，无需指定主模块。转换功能工作只是创建一个`main`目录，并将原先`src`移动到`main`目录下，以及其他操作。
+    默认主MicroModule为目录名为`main`的MicroModule。通过[MicroModule Android Studio插件](#jump)的转换功能，将模块转换成MicroModule格式时，无需指定主模块。转换功能工作只是创建一个`main`目录，并将原先`src`移动到`main`目录下，以及其他操作。
 
 
 * **`codeCheckEnabled`**
@@ -119,7 +119,7 @@ dependencies {}
     }
     ```
 
-## MicroModule Android Studio Plugin
+## <span id="jump">MicroModule Android Studio Plugin</span>
 Provides an action which allow you quickly create MicroModule or convert module to MicroModule.
 * Right click at module dir, in [New] group, you will find "MicroModule" action.
 * Right click at module dir, in [Refactor] group, you will find "Convert to MicroModule" action.
