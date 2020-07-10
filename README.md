@@ -1,83 +1,123 @@
 # MicroModule
-Rebuild multiple complete module structures within the module. Each complete module structure we called it MicroModule, Each MicroModule has its own `build.gradle` file where you can declare MicroModule dependencies. In addition, you can decide which MicroModules participate in the compilation of the module.
+重新定义Android模块结构，在模块内部可以创建多个和模块结构一致的微模块（MicroModule）。每一个MicroModule的结构和Android模块结构保持一致，也会有自己的`build.gradle`。另外，你可以很方便的配置哪些MicroModule参与最终APK的编译。
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
 ## Usage
-### Add MicroModule plugin **classpath** in root project build.gradle:
 
-    buildscript {
-        dependencies {
-	        ...
-            classpath 'com.eastwood.tools.plugins:micro-module:1.4.0'
+### 在根项目build.gradle中添加MicroModule插件依赖：
+
+```
+buildscript {
+    dependencies {
+        ...
+        classpath 'com.eastwood.tools.plugins:micro-module:1.4.0'
+    }
+}
+```
+
+### 在application或library类型的模块build.gradle中添加MicroModule插件：
+
+```
+apply plugin: 'micro-module'
+apply plugin: 'com.android.library' // or 'com.android.application'
+
+android {}
+
+microModule {
+    ...
+}
+
+dependencies {}
+```
+
+注意：MicroModule插件需要添加在android相关插件之前，相关配置`microModule {}` 需要添加在 `android {}` 和 `dependencies {}`之间。
+
+microModule中相关属性说明:
+
+* **`include`**
+
+    声明一个或多个MicroModule，类似于setting.gradle中的include，MicroModule文件夹名即为MicroModule的名称。
+
+    ```
+    microModule {
+        include 'p_base', 'p_common'
+
+        // 可以根据条件动态声明
+        if(debug) {
+            include 'debug'
+        } else {
+            include 'debug'
         }
     }
+    ```
 
-### Apply MicroModule plugin in application or library module build.gradle and add configuration options：
+* **`export`**
 
-    apply plugin: 'micro-module'
-    apply plugin: 'com.android.library' // or 'com.android.application'
+    配置参与APK编译的MicroModule。如果未配置export，则所有include的MicroModule都会参与APK编译。
 
-    android {}
+    ```
+    microModule {
+        include 'feature_A', 'feature_B', 'feature_C'
 
-	microModule {
-	    ...
-	}
+        export 'feature_A', 'feature_B'
+    }
+    ```
 
-	dependencies {}
+* **`includeMain`**
 
-Apply MicroModule plugin **must before** apply android plugin, and `microModule {}` should between `android {}` and `dependencies {}`.
+    指定主MicroModule。
+    当前模块的其他MicroModule的AndroidManifest.xml，将会合入主MicroModule的AndroidManifest.xml，并存放在`build/microModule/merge-manifest/`下。另外，当前模块的R类包名也将由主模块AndroidManifest.xml的package决定。
 
-The MicroModule plugin defines the following methods in `microModule {}`:
-* **`codeCheckEnabled`**--`boolean`
-
-    Prevent two non-dependent MicroModules from generating references. Use `codeCheckEnabled` to declared code check enable state, 'true' as default.
-
-* **`includeMain`**--`String`
-
-    Declare main MicroModule, affects the package name of the generated R class, and the AndroidManifest.xml merge. if not declared, will be declared as default if file with name `main` exist.
-
-* **`include`**--`String[]`
-
-    Declare other MicroModules.
-
-* **`export`**--`String[]`
-
-    Use `export` to decide which MicroModules participate in the compilation of the module. if not declared, all MicroModules which decleard by `include`, will participate in the compilation of the module.
+    默认主MicroModule为目录名为`main`的MicroModule。通过MicroModule Android Studio插件的转换功能，将模块转换成MicroModule格式时，无需指定主模块。转换功能工作只是创建一个`main`目录，并将原先`src`移动到`main`目录下，以及其他操作。
 
 
-*Example 1. build.gradle file of library module in the dome.*
+* **`codeCheckEnabled`**
 
-	microModule {
-	    codeCheckEnabled true
-	    include ':p_base'
-	    include ':p_common'
-	    include ':p_utils'
-	    export ':main'
-	}
+    是否开启MicroModule代码边界检查，默认不开启检查。
 
-### Declare MicroModule dependencies in MicroModule build.gradle:
-The MicroModule plugin provides a simple method for declaring dependencies on other MicroModules in `dependencies {}`.
+	有些场景下可能想使MicroModule在模块中保持独立，其类或资源不被该模块的其他MicroModule引用。代码边界检查在sync&build的时候进行，检测到没有依赖而存在引用时，会报错以及停止sync&build,并输出相应日志提示。
 
-	dependencies {
-	    implementation microModule(':p_common')
-	}
+    开启代码边界检查后，一个模块内的MicroModule之间，需要声明依赖关系。例如：
+    ```
+    // Module build.gradle
 
+    microModule {
+        codeCheckEnabled true
 
-The method **`microModule`** has a only `string` parameter, the name of the MicroModule.
+        include 'p_base', 'p_common'
+        include 'feature_A', 'feature_B'
 
-You can also declare dependencies on the other third party libraries in `dependencies {}`.
+        export 'feature_A'
+    }
 
-*Example 2. build.gradle file of main MicroModule in the demo.*
+    // MicroModule feature_A build.gradle
 
-	dependencies {
-	    implementation fileTree(dir: 'main/libs', include: ['*.jar'])
-	    implementation 'com.android.support:appcompat-v7:27.1.1'
-	    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    dependencies {
+        implementation microModule(':p_base')
+        implementation microModule(':p_common')
+    }
 
-	    implementation microModule(':p_common')
-	}
+    // MicroModule feature_B build.gradle
 
+    dependencies {
+        implementation microModule(':p_base')
+        implementation microModule(':p_common')
+    }
+    ```
+
+    另外MicroModule所需的依赖，也可以在各自的build.gradle dependencies中声明（此处的依赖不在代码边界检查范围之内）。
+
+    ```
+    dependencies {
+        implementation fileTree(dir: 'main/libs', include: ['*.jar'])
+        implementation 'com.android.support:appcompat-v7:27.1.1'
+        implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+
+        implementation microModule(':p_base')
+        implementation microModule(':p_common')
+    }
+    ```
 
 ## MicroModule Android Studio Plugin
 Provides an action which allow you quickly create MicroModule or convert module to MicroModule.
