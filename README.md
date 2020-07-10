@@ -1,11 +1,11 @@
 # MicroModule
-重新定义Android模块结构，在模块内部可以创建多个和模块结构一致的微模块（MicroModule）。每一个MicroModule的结构和Android模块结构保持一致，也会有自己的`build.gradle`。另外，你可以很方便的配置哪些MicroModule参与最终APK的编译。
+重新定义Android模块结构，在模块内部可以创建多个和模块结构一致的微模块（MicroModule）。每一个MicroModule的结构和Android模块结构保持一致，也会有自己的`build.gradle`。另外，你可以很方便的配置哪些MicroModule参与APK的编译。
 
 <img src='https://github.com/EastWoodYang/MicroModule/blob/master/picture/1.png'/>
 
 ## Usage
 
-### 在根项目build.gradle中添加MicroModule插件依赖：
+### 在根项目`build.gradle`中添加MicroModule插件依赖：
 
 ```
 buildscript {
@@ -16,7 +16,7 @@ buildscript {
 }
 ```
 
-### 在application或library类型的模块build.gradle中添加MicroModule插件：
+### 在`application`或`library`类型的模块`build.gradle`中添加MicroModule插件：
 
 ```
 apply plugin: 'micro-module'
@@ -33,11 +33,11 @@ dependencies {}
 
 注意：MicroModule插件需要添加在android相关插件之前，相关配置`microModule {}` 需要添加在 `android {}` 和 `dependencies {}`之间。
 
-microModule中相关属性说明:
+### microModule属性说明
 
 * **`include`**
 
-    声明一个或多个MicroModule，类似于setting.gradle中的include，MicroModule文件夹名即为MicroModule的名称。
+    声明一个或多个MicroModule，类似于`setting.gradle`中的`include`，MicroModule目录名即为MicroModule的名称。
 
     ```
     microModule {
@@ -54,7 +54,7 @@ microModule中相关属性说明:
 
 * **`export`**
 
-    配置参与APK编译的MicroModule。如果未配置export，则所有include的MicroModule都会参与APK编译。
+    配置参与APK编译的MicroModule。如果未配置`export`，则所有`include`的MicroModule都会参与APK编译。
 
     ```
     microModule {
@@ -67,7 +67,7 @@ microModule中相关属性说明:
 * **`includeMain`**
 
     指定主MicroModule。
-    当前模块的其他MicroModule的AndroidManifest.xml，将会合入主MicroModule的AndroidManifest.xml，并存放在`build/microModule/merge-manifest/`下。另外，当前模块的R类包名也将由主模块AndroidManifest.xml的package决定。
+    当前模块的其他MicroModule的`AndroidManifest.xml`，将会合入主MicroModule的`AndroidManifest.xml`，并存放在`build/microModule/merge-manifest/`下。另外，当前模块的R类包名也将由主模块`AndroidManifest.xml`的`package`决定。
 
     默认主MicroModule为目录名为`main`的MicroModule。通过MicroModule Android Studio插件的转换功能，将模块转换成MicroModule格式时，无需指定主模块。转换功能工作只是创建一个`main`目录，并将原先`src`移动到`main`目录下，以及其他操作。
 
@@ -76,7 +76,7 @@ microModule中相关属性说明:
 
     是否开启MicroModule代码边界检查，默认不开启检查。
 
-	有些场景下可能想使MicroModule在模块中保持独立，其类或资源不被该模块的其他MicroModule引用。代码边界检查在sync&build的时候进行，检测到没有依赖而存在引用时，会报错以及停止sync&build,并输出相应日志提示。
+	有些场景下可能想使MicroModule在模块中保持独立，其类或资源不被该模块的其他MicroModule引用。代码边界检查在`sync&build`的时候进行，检测到没有依赖而存在引用时，会报错以及停止`sync&build`,并输出相应日志提示。
 
     开启代码边界检查后，一个模块内的MicroModule之间，需要声明依赖关系。例如：
     ```
@@ -106,7 +106,7 @@ microModule中相关属性说明:
     }
     ```
 
-    另外MicroModule所需的依赖，也可以在各自的build.gradle dependencies中声明（此处的依赖不在代码边界检查范围之内）。
+    另外MicroModule所需的依赖，也可以在各自的`build.gradle` `dependencies {}`中声明（此处的依赖不在代码边界检查范围之内）。
 
     ```
     dependencies {
