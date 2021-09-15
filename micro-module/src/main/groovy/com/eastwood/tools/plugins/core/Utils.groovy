@@ -36,7 +36,11 @@ class Utils {
         } else {
             microModuleName = microModuleName.replaceAll("/", ":")
         }
-        if (!microModuleDir.exists()) {
+        // in windows and mac system, the file name is not case sensitive, micro-module name may not match file name but run correctly
+        // in linux system(as ci server), this case is wrong
+        // add this condition to find this error in windows
+        if (!microModuleDir.exists() || microModuleName != microModulePath) {
+            System.err.println("microModuleDir:" + microModuleDir.getAbsolutePath() + " not exit, or module name and file name case sensitivity wrong")
             return null
         }
         MicroModule microModule = new MicroModule()
